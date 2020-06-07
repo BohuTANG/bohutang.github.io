@@ -78,7 +78,7 @@
       </h1>
       <span>
         
-        <time class="time" datetime="2020-06-07T16:34:49.655Z">
+        <time class="time" datetime="2020-06-07T16:42:00.342Z">
         2020-06-08
       </time>
         
@@ -125,7 +125,7 @@
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">INSERT INTO test VALUES(1,1,1), (2,2,2);</span><br></pre></td></tr></table></figure>
 
 <p>首先内核解析SQL语句生成AST，根据AST获取Interpreter：InterpreterInsertQuery。<br>其次Interpreter依次添加相应的OutputStream。<br>然后从InputStream读取数据，写入到OutputStream，stream会层层渗透，一直写到底层的存储引擎。<br>最后写入到Socket Output，返回结果。</p>
-<p>ClickHouse的OutputStream编排还是比较复杂，缺少类似Processor机制的调度和编排，但是由于模式比较固化，目前看还算清晰。</p>
+<p>ClickHouse的OutputStream编排还是比较复杂，缺少类似Pipeline的调度和编排，但是由于模式比较固化，目前看还算清晰。</p>
 
     </div>
 
