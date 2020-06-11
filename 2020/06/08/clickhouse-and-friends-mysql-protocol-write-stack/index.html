@@ -95,7 +95,7 @@
     </header>
 
     <div class="post-content">
-      <p>上篇的《MySQL Protocol和Read调用栈》里介绍了ClickHouse一条查询语句的调用栈，本文继续介绍写的调用栈，开整。</p>
+      <p>上篇的<a href="/2020/06/07/clickhouse-and-friends-mysql-protocol-read-stack/">MySQL Protocol和Read调用</a>里介绍了ClickHouse一条查询语句的调用栈，本文继续介绍写的调用栈，开整。</p>
 <h2 id="Write请求"><a href="#Write请求" class="headerlink" title="Write请求"></a><b>Write请求</b></h2><ol>
 <li><p>建表:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; CREATE TABLE test(a UInt8, b UInt8, c UInt8) ENGINE&#x3D;MergeTree() PARTITION BY (a, b) ORDER BY c;</span><br><span class="line">Query OK, 0 rows affected (0.03 sec)</span><br></pre></td></tr></table></figure>
