@@ -96,8 +96,8 @@
 
     <div class="post-content">
       <p>本文谈下ClickHouse核心科技：处理器Processor和有向无环调度器 DAG Scheduler。</p>
-<p>这些概念并不是ClickHouse首创，拼的是实现细节，虎哥曾用golang写过一个<a href="https://github.com/vectorengine/vectorsql/tree/master/src/processors" target="_blank" rel="noopener">原型</a>，感兴趣的同学也可以关注下<a href="https://github.com/MaterializeInc/materialize" target="_blank" rel="noopener">materialize</a>的<a href="https://github.com/TimelyDataflow/timely-dataflow" target="_blank" rel="noopener">timely-dataflow</a>。</p>
-<p>正是这些细节的精良设计，才有了ClickHouse整体的高性能。</p>
+<p>这些概念并不是ClickHouse首创，感兴趣的同学可以关注下<a href="https://github.com/MaterializeInc/materialize" target="_blank" rel="noopener">materialize</a>的<a href="https://github.com/TimelyDataflow/timely-dataflow" target="_blank" rel="noopener">timely-dataflow</a>，虎哥用golang也写过一个<a href="https://github.com/vectorengine/vectorsql/tree/master/src/processors" target="_blank" rel="noopener">原型</a>。</p>
+<p>拼的是实现细节，正是这些模块的精良设计，才有了ClickHouse整体的高性能。</p>
 <h2 id="Pipeline问题"><a href="#Pipeline问题" class="headerlink" title="Pipeline问题"></a>Pipeline问题</h2><p>在传统数据库系统中，一个Query处理流程大体是:</p>
   <pre class="mermaid">    graph LR
     Parse --> Plan --> Execute --> Storage</pre>
@@ -168,7 +168,9 @@
 
 
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>Processor使ClickHouse在架构上更加整齐，在性能上更加强悍。</p>
-<p>从开发者角度看还是比较复杂，不过upstream已经做了大量的基础工作，让开发者在上层使用Processor时更加容易。</p>
+<p>从开发者角度看还是比较复杂，状态迁移还需要开发者自己控制，不过upstream已经做了大量的基础工作，比如对Source的封装ISource，对Sink的封装ISink，还有一个基础的ISimpleTransform，让开发者在上层使用Processor时更加容易，可以积木式搭建出自己想要的Pipeline。</p>
+<p>ClickHouse的Transformer数据单元是Chunk，Transformer对上游OutPort流过来的Chunk进行加工，然后输出给下游的InPort，图连通式的流水线并行工作，让CPU尽量满负荷工作。</p>
+<p>目前，ClickHouse master已经默认开启了QueryPipeline。</p>
 
     </div>
 
