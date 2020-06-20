@@ -98,22 +98,13 @@
       <p>本文谈下ClickHouse核心科技：处理器Processor和有向无环调度器 DAG Scheduler。</p>
 <p>这些概念并不是ClickHouse首创，感兴趣的同学可以关注下<a href="https://github.com/MaterializeInc/materialize" target="_blank" rel="noopener">materialize</a>的<a href="https://github.com/TimelyDataflow/timely-dataflow" target="_blank" rel="noopener">timely-dataflow</a>，虎哥用golang也写过一个<a href="https://github.com/vectorengine/vectorsql/tree/master/src/processors" target="_blank" rel="noopener">原型</a>。</p>
 <p>拼的是实现细节，正是这些模块的精良设计，才有了ClickHouse整体的高性能。</p>
-<h2 id="Pipeline问题"><a href="#Pipeline问题" class="headerlink" title="Pipeline问题"></a>Pipeline问题</h2><p>在传统数据库系统中，一个Query处理流程大体是:</p>
-  <pre class="mermaid">    graph LR
-    Parse --> Plan --> Execute --> Storage</pre>
-
+<h2 id="Pipeline问题"><a href="#Pipeline问题" class="headerlink" title="Pipeline问题"></a>Pipeline问题</h2><p>在传统数据库系统中，一个Query处理流程大体是:<br><img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/processor-plan.png" align="center" style="zoom:50%;" /></p>
 <p>其中在Plan阶段，往往会增加一个Pipeline组装(一个transformer代表一次数据处理)：</p>
-  <pre class="mermaid">  graph LR
-    Source -->|output0|Transformer1 -->|output1| Transformer2 -->|output2| Transformer3 -->|output3| Sinker</pre>
+<img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/processor-transformer.png" align="center" style="zoom:50%;" />
 
 <p>所有transformer被编排成一个流水线(Pipeline)，然后交给Executor串行式执行，每执行一个transformer数据集就会被加工并输出，一直到下游的Sinker。<br>可以看到，这种模型的优点是<b>简单</b>，缺点是<b>性能低</b>，无法发挥CPU的<b>并行</b>能力，通常叫火山模型(<em>volcano</em>-style)，对于OLTP低延迟来说足够，对于计算密集的OLAP来说是远远不够的，CPU不到100%就是犯罪！</p>
 <p>对于上面的例子，如果Transformer1和Transformer2没有交集，那么它们就可以并行处理：</p>
-<pre class="mermaid">graph LR
-   Source --> Transformer1
-   Source --> Transformer2
-   Transformer1 --> Transformer3
-   Transformer2 --> Transformer3
-   Transformer3 --> Sinker</pre>
+<img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/processor-transformer2.png" align="center" style="zoom:50%;" />
 
 <p>这样就涉及到一些比较灵魂的问题：</p>
 <ol>
@@ -167,8 +158,7 @@
 <h3 id="DAG-Scheluer"><a href="#DAG-Scheluer" class="headerlink" title="DAG Scheluer"></a>DAG Scheluer</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">int main(int, char **)</span><br><span class="line">&#123;</span><br><span class="line">    auto source0 &#x3D; std::make_shared&lt;MySource&gt;(5);</span><br><span class="line">    auto add0 &#x3D; std::make_shared&lt;MyAddTransformer&gt;();</span><br><span class="line">    auto sinker0 &#x3D; std::make_shared&lt;MySink&gt;();</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F;&#x2F; Connect.</span><br><span class="line">    connect(source0-&gt;getPort(), add0-&gt;getInputPort());</span><br><span class="line">    connect(add0-&gt;getOutputPort(), sinker0-&gt;getPort());</span><br><span class="line"></span><br><span class="line">    std::vector&lt;ProcessorPtr&gt; processors &#x3D; &#123;source0, add0, sinker0&#125;;</span><br><span class="line">    PipelineExecutor executor(processors);</span><br><span class="line">    executor.execute(1);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>Processor使ClickHouse在架构上更加整齐，在性能上更加强悍。</p>
-<p>从开发者角度看还是比较复杂，状态迁移还需要开发者自己控制，不过upstream已经做了大量的基础工作，比如对Source的封装ISource，对Sink的封装ISink，还有一个基础的ISimpleTransform，让开发者在上层使用Processor时更加容易，可以积木式搭建出自己想要的Pipeline。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>从开发者角度看还是比较复杂，状态迁移还需要开发者自己控制，不过upstream已经做了大量的基础工作，比如对Source的封装ISource，对Sink的封装ISink，还有一个基础的ISimpleTransform，让开发者在上层使用Processor时更加容易<br>，可以积木式搭建出自己想要的Pipeline。</p>
 <p>ClickHouse的Transformer数据单元是Chunk，Transformer对上游OutPort流过来的Chunk进行加工，然后输出给下游的InPort，图连通式的流水线并行工作，让CPU尽量满负荷工作。</p>
 <p>目前，ClickHouse master已经默认开启了QueryPipeline。</p>
 
@@ -193,10 +183,6 @@
 <div class="share" style="width: 100%;">
 
 <div class="share" style="width: 100%;">
-  <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/wx/wx-small.jpg" alt="Database Geek" style="margin: auto; display: block;"/>
-
-  <div style="margin: auto; text-align: center; font-size: 0.8em; color: grey;">关注请注明：bohutang.me</div>
-
 </div>
 </div>
 
@@ -213,6 +199,11 @@
   
       <div class="post-nav-item post-nav-prev">
           
+          <a href="/2020/06/20/clickhouse-and-friends-merge-tree-algo/" rel="prev" title="ClickHouse和他的朋友们： 存储引擎技术进化与MergeTree">
+            ClickHouse和他的朋友们： 存储引擎技术进化与MergeTree
+          </a>
+          <span>〉</span>
+        
       </div>
     </div>
   
@@ -229,24 +220,6 @@
         <a class="bottom-item" href="https://github.com/KevinOfNeu/hexo-theme-xoxo" target="_blank">Theme xoxo</a>
     </div>
 </footer>
-
-  <script src='https://unpkg.com/mermaid@8.5.2/dist/mermaid.min.js'></script>
-  <script>
-    if (window.mermaid) {
-                var config = {
-            mermaid:{
-                startOnLoad:true,
-                htmlLabels:true,
-                callback:function(id){
-                    console.log(id,' rendered');
-                },
-flowChart:{width:'50%', height:'30%'}
-            }
-        };
-        mermaid.initialize(config);
-    }
-  </script>
-
 
   
   <!-- scripts list from theme config.yml -->
