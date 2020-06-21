@@ -100,7 +100,7 @@
 <p>本文为上篇，先来个热身，相信本篇大部分内容对大家来说都比较陌生，很少人写过。</p>
 <h2 id="地位"><a href="#地位" class="headerlink" title="地位"></a><b>地位</b></h2><p>存储引擎(事务型)在一个数据库(DBMS)中的地位如何呢？</p>
 <p>MySQL 的商业成功可以说大部分来自于 InnoDB 引擎，Oracle 收购 InnoDB 比 MySQL 早好几年呢！<br>20年前，能亲手撸一套 <a href="https://en.wikipedia.org/wiki/Algorithms_for_Recovery_and_Isolation_Exploiting_Semantics" target="_blank" rel="noopener">AIRES(Algorithms for Recovery and Isolation Exploiting Semantics)</a> 规范引擎，实力还是相当震撼的，相信 Oracle 收购的不仅是 InnoDB 这个引擎，更重要的是人， InnoDB 作者在哪里，在干什么？！<br>Fork 出来的 MariaDB 这么多年一直找不到自己的灵魂，在 Server 层磨磨蹭蹭可谓是江河日下，只能四处收购碰碰运气，当年 TokuDB 战斗过的 commit 依在，但这些已经是历史了。<br>另，WiredTiger 被 MongoDB 收购并使用，对整个生态所起的作用也是无可估量的，这些发动机引擎对于一辆汽车是非常重要的。</p>
-<p>有人问道，都已经 2020 年了，开发一个存储引擎还这么难吗？不难，但是造出来的未必有 RocksDB 好用？！<br>如大家所见，很多的分布式存储引擎都是基于 RocksDB 研发，可谓短期内还算明智的选择。<br>从工程角度来看，一个 ACID 引擎要打磨的东西非常之多，到处充斥着人力、钱力、耐心的消耗，一种可能是写到一半就停滞了(如<a href="https://github.com/BohuTANG/nessDB" target="_blank" rel="noopener">nessDB</a>)，还有一种可能是写着写着发现跟xx很像，沃茨法克。<br>当然，这里并不是鼓励大家都去基于 RocksDB 去构建自己的产品，而是要根据自己的情况去做选择。</p>
+<p>有人问道，都已经 2020 年了，开发一个存储引擎还这么难吗？不难，但是造出来的未必有 RocksDB 好用？！<br>如大家所见，很多的分布式存储引擎都是基于 RocksDB 研发，可谓短期内还算明智的选择。<br>从工程角度来看，一个 ACID 引擎要打磨的东西非常之多，到处充斥着人力、钱力、耐心的消耗，一种可能是写到一半就停滞了(如 <a href="https://github.com/BohuTANG/nessDB" target="_blank" rel="noopener">nessDB</a>)，还有一种可能是写着写着发现跟xx很像，沃茨法克。<br>当然，这里并不是鼓励大家都去基于 RocksDB 去构建自己的产品，而是要根据自己的情况去做选择。</p>
 <h2 id="B-tree"><a href="#B-tree" class="headerlink" title="B-tree"></a><b>B-tree</b></h2><p>首先要尊称一声大爷，这个大爷年方 50，目前支撑着数据库产业的半壁江山。</p>
 <p>50 年来不变而且人们还没有改变它的意向，这个大爷厉害的很！<br>鉴定一个算法的优劣，有一个学派叫 <b>IO复杂度分析</b>，简单推演真假便知。<br>下面就用此法分析下 B-tree(traditional b-tree) 的 IO 复杂度，对读、写 IO 一目了然，真正明白读为什么快，写为什么慢，如何优化。<br>为了可以愉快的阅读，本文不会做任何公式推导，复杂度分析怎么可能没有公式呢！</p>
 <h3 id="读IO分析"><a href="#读IO分析" class="headerlink" title="读IO分析"></a><b>读IO分析</b></h3><p>这里有一个 3-level 的 B-tree，每个方块代表一个 page，数字代表 page ID。</p>
@@ -108,8 +108,8 @@
 
 <p>上图 B-tree 结构是<b>内存</b>的一个表现形式，如果我们要读取的记录在 leaf-8上，read-path 如蓝色箭头所示:<br>root-9 –&gt; branch-6 –&gt; leaf-8</p>
 <p>下图是 B-tree 在<b>磁盘</b>上的存储形式，meta page 是起点:<br><img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/btree-read-disk.png" align="center" style="zoom:40%;" /></p>
-<p>这样读取的随机 IO (假设内存里没有page缓存且page存储是随机的)总数就是(蓝色箭头):</p>
-<p>1(meta-10)IO +  1(root-9)IO + 1(branch-6)IO + 1(leaf-8)IO = 4次 IO，这里忽略一直缓存的 meta 和 root，就是<b>2</b>次随机 IO。<br>如果磁盘 seek 是1ms，读取延迟就是<b>2ms</b>。</p>
+<p>这样读取的随机 IO (假设内存里没有 page 缓存且 page 存储是随机的)总数就是(蓝色箭头):</p>
+<p>1(meta-10)IO +  1(root-9)IO + 1(branch-6)IO + 1(leaf-8)IO = 4次 IO，这里忽略一直缓存的 meta 和 root，就是 <b>2</b> 次随机 IO。<br>如果磁盘 seek 是 1ms，读取延迟就是 <b>2ms</b>。</p>
 <p>通过推演就会发现，B-tree 是一种读优化(Read-Optimized)的数据结构，无论 LSM-tree 还是 Fractal-tree 等在读上只能比它慢，因为读放大(Read Amplification)问题。<br>存储引擎算法可谓日新月异，但是大部分都是在跟写优化(Write-Optimized)做斗争，那怕是一个常数项的优化那就是突破，自从 Fractal-tree 突破后再无来者了！</p>
 <h3 id="写IO分析"><a href="#写IO分析" class="headerlink" title="写IO分析"></a><b>写IO分析</b></h3><p>现在写一条记录到 leaf-8。</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/btree-update-raw.png" align="center" style="zoom:40%;" />
@@ -125,7 +125,7 @@
 <li>page 回写磁盘时 append only 到文件末尾</li>
 <li>无需 page WAL，数据不 overwrite，有写放大(Write Amplification)问题，需要做空洞重利用机制</li>
 </ol>
-<p>Append-only B-tree 节省了回写时的2次随机 IO，转换为常数级(constant)的1次顺序 IO，写性能大幅提升，总结起来就是：<br><b>随机变顺序，空间换时间</b><br>LSM-tree, Fractal-tree 等写优化算法的核心思想也是这个，只不过其实现机制不同。</p>
+<p>Append-only B-tree 节省了回写时的 2 次随机 IO，转换为常数级(constant)的1次顺序 IO，写性能大幅提升，总结起来就是：<br><b>随机变顺序，空间换时间</b><br>LSM-tree, Fractal-tree 等写优化算法的核心思想也是这个，只不过其实现机制不同。</p>
 <h2 id="LSM-trees"><a href="#LSM-trees" class="headerlink" title="LSM-trees"></a><b>LSM-trees</b></h2><p>随着 LevelDB 的问世，LSM-tree 逐渐被大家所熟知。<br>LSM-tree 更像一种思想，模糊了 B-tree 里 tree 的严肃性，通过文件组织成一个更加松散的 tree。<br>这里不谈一个具体的 LSM-tree 是 Leveled 还是 Size-tiered，只谈大体思想。</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/lsm-tree.png" align="center" style="zoom:40%;" />
 
@@ -156,7 +156,7 @@
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/veb-layout.png" align="center" style="zoom:40%;" />
 
 <p>这是一个 binary-tree 的 4 种 layout 表示形式，那么哪种 layou t对 CPU cache line 最友好？</p>
-<p>也许你已经猜对了，那就是 van Emde Boas，简称 vEB。<br>因为它的相邻数据“扎堆”存储，point-query 和 range-query 的 cache line 可以最大化共享，skiplist 对 cache line 是非常不友好的。<br>对于 cache oblivious数据结构，这里有一个简单的原型实现: <a href="https://github.com/BohuTANG/omt" target="_blank" rel="noopener">omt</a></p>
+<p>也许你已经猜对了，那就是 van Emde Boas，简称 vEB。<br>因为它的相邻数据“扎堆”存储，point-query 和 range-query 的 cache line 可以最大化共享，skiplist 对 cache line 是非常不友好的，还可以更快！<br>对于 cache oblivious数据结构，这里有一个简单的原型实现: <a href="https://github.com/BohuTANG/omt" target="_blank" rel="noopener">omt</a></p>
 <h2 id="B-tree优化魔力象限"><a href="#B-tree优化魔力象限" class="headerlink" title="B-tree优化魔力象限"></a><b>B-tree优化魔力象限</b></h2><p>写优化算法从原生的 B-tree 到 Append-only B-tree(代表作 LMDB)，又到 LSM-tree(LevelDB/RocksDB 等)，最后进化到目前最先进的 Fractal-tree(TokuDB)。<br>这些算法耗费了很多年才在工程上实现并被认可，研发一款存储引擎缺的不是算法而是“鉴宝”的能力，这个“宝”可能已经躺了几十年了。</p>
 <p>其实，”科学家”们已经总结出一个 B-tree 优化魔力象限:</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/btree-optimal-curve.png" align="center" style="zoom:50%;" />
@@ -165,7 +165,7 @@
 <p>在它们中间有一个优化曲度(Optimal Curve)。<br>在这个曲度上，你可以通过增加/减少一个常数(1-epsilon)来做读和写优化组合，LSM-tree/Fractal-tree 都在这个曲度之上。  </p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/btree-epsilon.png" align="center" style="zoom:20%;" />
 
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p>本文主要讨论事务性引擎的技术演进，其中包含了 IO 复杂度分析，其实这个分析是基于一个 DAM( Disk Access Machine)模型，这里不再展开。<br>这个模型要解决什么问题呢？<br>如果工程中涉及硬件层级关系，比如 Disk/Memory/CPU，数据在Disk，读取(以 block 为单位)到 Memory，查找计算(cache-line)在 CPU，<br>不同介质间性能差距又非常之大，我们怎么做才能让整体性能更优的问题。<br>和当今的硬件相融合，这个模型也一样适用。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p>本文主要讨论事务性引擎的技术演进，其中包含了 IO 复杂度分析，其实这个分析是基于一个 DAM(Disk Access Machine)模型，这里不再展开。<br>这个模型要解决什么问题呢？<br>如果工程中涉及硬件层级关系，比如 Disk/Memory/CPU，数据在Disk，读取(以 block 为单位)到 Memory，查找计算(cache-line)在 CPU，<br>不同介质间性能差距又非常之大，我们怎么做才能让整体性能更优的问题。<br>和当今的硬件相融合，这个模型也一样适用。</p>
 <p>最后回到 ClickHouse 的 MergeTree 引擎，它只使用了本文中的部分优化，实现也比较简洁、高效，毕竟没有事务，撸起来也没啥心理负担。<br><strong>随机变顺序，空间换时间</strong>， MergeTree 原理，请听下回分解。</p>
 <h2 id="References"><a href="#References" class="headerlink" title=" References"></a><b> References</b></h2><p>[1] <a href="https://www.cs.au.dk/~gerth/papers/cacheoblivious05.pdf" target="_blank" rel="noopener">Cache-Oblivious Data Structures</a><br>[2] <a href="https://www3.cs.stonybrook.edu/~bender/talks/2013-BenderKuszmaul-xldb-tutorial.pdf" target="_blank" rel="noopener">Data Structures and Algorithms for Big Databases</a><br>[3] <a href="https://link.springer.com/chapter/10.1007%2F3-540-60220-8_74" target="_blank" rel="noopener">The buffer tree: A new technique for optimal I/O-algorithms</a><br>[4] <a href="http://www.bzero.se/ldapd/btree.html" target="_blank" rel="noopener">how the append-only btree works</a><br>[5] <a href="https://www.douban.com/note/269741273/" target="_blank" rel="noopener">写优化的数据结构(1):AOF和b-tree之间</a><br>[6] <a href="https://www.douban.com/note/269744617/" target="_blank" rel="noopener">写优化的数据结构(2):buffered tree</a><br>[7] <a href="https://www.douban.com/note/304123656/" target="_blank" rel="noopener">存储引擎数据结构优化(1):cpu bound</a><br>[8] <a href="https://www.douban.com/note/304349195/" target="_blank" rel="noopener">存储引擎数据结构优化(2):io bound</a><br>[9] <a href="https://github.com/BohuTANG/nessDB" target="_blank" rel="noopener">nessDB</a><br>[10] <a href="https://github.com/BohuTANG/omt" target="_blank" rel="noopener">omt</a></p>
 
