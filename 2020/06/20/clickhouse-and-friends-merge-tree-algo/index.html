@@ -118,7 +118,7 @@
 <p>假设这次写入导致 root, branch 都发生了变化，这种 in-place 的更新反映到磁盘上就是：</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/btree-update-raw-disk.png" align="center" style="zoom:40%;" />
 
-<p>基本是 <b>2</b> 次读 IO和写<b>2</b>次写 IO+WAL fsync，粗略为<b>4</b>次随机 IO。<br>通过分析发现，B-tree 对写操作不太友好，随机 IO 次数较多，而且 in-place 更新必须增加一个 page 级的 WAL 保证失败回滚，简直是要命。</p>
+<p>基本是 <b>2</b> 次读 IO和写 <b>2</b> 次写 IO+WAL fsync，粗略为 <b>4</b> 次随机 IO。<br>通过分析发现，B-tree 对写操作不太友好，随机 IO 次数较多，而且 in-place 更新必须增加一个 page 级的 WAL 保证失败回滚，简直是要命。</p>
 <h3 id="Write-Optimized-B-tree"><a href="#Write-Optimized-B-tree" class="headerlink" title="Write-Optimized B-tree"></a><b>Write-Optimized B-tree</b></h3><p>说到写优化，在机械盘的年代，大家的方向基本是把随机 IO 转换为顺序 IO，充分发挥磁盘的机械优势，于是出现一种 Append-only B-tree：<br><img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/btree-aof.png" align="center" style="zoom:40%;" /></p>
 <ol>
 <li>更新生成新的 page(蓝色)</li>
@@ -134,7 +134,7 @@
 </li>
 <li><p>后台线程根据规则(Leveled/Sized)进行 merge，C0 –&gt; C1, C1 –&gt; C2 … CL</p>
 </li>
-<li><p>写入 C0 即可返回，IO 放到后台的Merge过程</p>
+<li><p>写入 C0 即可返回，IO 放到后台的 Merge 过程</p>
 </li>
 <li><p>每次 Merge 是硬伤，动作大就抖，动作小性能不好，每次 Merge 的数据流向不明确</p>
 </li>
@@ -148,16 +148,16 @@
 <li>读放大问题</li>
 </ol>
 <h2 id="Fractal-tree"><a href="#Fractal-tree" class="headerlink" title="Fractal-tree"></a><b>Fractal-tree</b></h2><p>终于发展到了“终极”优化(目前最先进的索引算法)，Fractal-tree。<br>它是在 Append-only B-tree 的基础上，对每个 branch 节点增加了一个 message buffer 作为缓冲，可以看做是 LSM-tree 和 Append-only B-tree 完美合体。</p>
-<p>相对于 LSM-tree 它的优势非常明显:<br>Merge 更加有序，数据流向非常分明，消除了 Merge 的抖动问题，大家一直寻找的 compaction 防抖方案来了！</p>
+<p>相对于 LSM-tree 它的优势非常明显:<br>Merge 更加有序，数据流向非常分明，消除了 Merge 的抖动问题，大家一直寻找的 compaction 防抖方案一直存在的！</p>
 <p>这个高科技目前只有 <a href="https://github.com/xelabs/tokudb" target="_blank" rel="noopener">TokuDB</a> 在使用，这个算法可以开篇新介，这里不做累述，感兴趣的可以参考原型实现 <a href="https://github.com/BohuTANG/nessDB" target="_blank" rel="noopener">nessDB</a>。</p>
 <h2 id="Cache-oblivious"><a href="#Cache-oblivious" class="headerlink" title="Cache-oblivious"></a><b>Cache-oblivious</b></h2><p>这个词对于大部分人都是陌生的，不过别怕。<br>在存储引擎里，有一个数据结构非常非常重要，它负责 page 数据有序性维护，比如在一个 page 里怎么快速定位到我要的记录。<br>在 LevelDB 里使用 skiplist，但大部分引擎使用的是一个有序数组来表示，比如 [1, 2, 3, … 100]，然后使用二分查找。</p>
 <p>大概 10 年前一位内核开发者发表了一篇 &lt;<a href="https://queue.acm.org/detail.cfm?id=1814327" target="_blank" rel="noopener">You’re Doing It Wrong</a>&gt;，这个小文讲了一个很有意思的事情:<br>数据的组织形式对性能有很大的影响，因为 CPU有 cache line。</p>
 <p>抛开这篇文章不谈，咱们来看一张“神仙”图：</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/veb-layout.png" align="center" style="zoom:40%;" />
 
-<p>这是一个 binary-tree 的 4 种 layout 表示形式，那么哪种 layou t对 CPU cache line 最友好？</p>
-<p>也许你已经猜对了，那就是 van Emde Boas，简称 vEB。<br>因为它的相邻数据“扎堆”存储，point-query 和 range-query 的 cache line 可以最大化共享，skiplist 对 cache line 是非常不友好的，还可以更快！<br>对于 cache oblivious数据结构，这里有一个简单的原型实现: <a href="https://github.com/BohuTANG/omt" target="_blank" rel="noopener">omt</a></p>
-<h2 id="B-tree优化魔力象限"><a href="#B-tree优化魔力象限" class="headerlink" title="B-tree优化魔力象限"></a><b>B-tree优化魔力象限</b></h2><p>写优化算法从原生的 B-tree 到 Append-only B-tree(代表作 LMDB)，又到 LSM-tree(LevelDB/RocksDB 等)，最后进化到目前最先进的 Fractal-tree(TokuDB)。<br>这些算法耗费了很多年才在工程上实现并被认可，研发一款存储引擎缺的不是算法而是“鉴宝”的能力，这个“宝”可能已经躺了几十年了。</p>
+<p>这是一个 binary-tree 的 4 种 layout 表示形式，那么哪种 layout 对 CPU cache line 最友好？</p>
+<p>也许你已经猜对了，那就是 van Emde Boas，简称 vEB。<br>因为它的相邻数据“扎堆”存储，point-query 和 range-query 的 cache line 可以最大化共享，skiplist 对 cache line 是非常不友好的，还可以更快！<br>对于 cache oblivious 数据结构，这里有一个简单的原型实现: <a href="https://github.com/BohuTANG/omt" target="_blank" rel="noopener">omt</a></p>
+<h2 id="B-tree优化魔力象限"><a href="#B-tree优化魔力象限" class="headerlink" title="B-tree优化魔力象限"></a><b>B-tree优化魔力象限</b></h2><p>写优化算法从原生的 B-tree 到 Append-only B-tree(代表作 LMDB)，又到 LSM-tree(LevelDB/RocksDB 等)，最后进化到目前最先进的 Fractal-tree (TokuDB)。<br>这些算法耗费了很多年才在工程上实现并被认可，研发一款存储引擎缺的不是算法而是“鉴宝”的能力，这个“宝”可能已经躺了几十年了。</p>
 <p>其实，”科学家”们已经总结出一个 B-tree 优化魔力象限:</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/btree-optimal-curve.png" align="center" style="zoom:50%;" />
 
@@ -165,7 +165,7 @@
 <p>在它们中间有一个优化曲度(Optimal Curve)。<br>在这个曲度上，你可以通过增加/减少一个常数(1-epsilon)来做读和写优化组合，LSM-tree/Fractal-tree 都在这个曲度之上。  </p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/btree-epsilon.png" align="center" style="zoom:20%;" />
 
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p>本文主要讨论事务性引擎的技术演进，其中包含了 IO 复杂度分析，其实这个分析是基于一个 DAM(Disk Access Machine)模型，这里不再展开。<br>这个模型要解决什么问题呢？<br>如果工程中涉及硬件层级关系，比如 Disk/Memory/CPU，数据在Disk，读取(以 block 为单位)到 Memory，查找计算(cache-line)在 CPU，<br>不同介质间性能差距又非常之大，我们怎么做才能让整体性能更优的问题。<br>和当今的硬件相融合，这个模型也一样适用。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p>本文主要讨论事务性引擎的技术演进，其中包含了 IO 复杂度分析，其实这个分析是基于一个 DAM(Disk Access Machine)模型，这里不再展开。<br>这个模型要解决什么问题呢？<br>如果工程中涉及硬件层级关系，比如 Disk / Memory / CPU，数据在Disk，读取(以 block 为单位)到 Memory，查找计算(cache-line)在 CPU，<br>不同介质间性能差距又非常之大，我们怎么做才能让整体性能更优的问题。<br>和当今的硬件相融合，这个模型也一样适用。</p>
 <p>最后回到 ClickHouse 的 MergeTree 引擎，它只使用了本文中的部分优化，实现也比较简洁、高效，毕竟没有事务，撸起来也没啥心理负担。<br><strong>随机变顺序，空间换时间</strong>， MergeTree 原理，请听下回分解。</p>
 <h2 id="References"><a href="#References" class="headerlink" title=" References"></a><b> References</b></h2><p>[1] <a href="https://www.cs.au.dk/~gerth/papers/cacheoblivious05.pdf" target="_blank" rel="noopener">Cache-Oblivious Data Structures</a><br>[2] <a href="https://www3.cs.stonybrook.edu/~bender/talks/2013-BenderKuszmaul-xldb-tutorial.pdf" target="_blank" rel="noopener">Data Structures and Algorithms for Big Databases</a><br>[3] <a href="https://link.springer.com/chapter/10.1007%2F3-540-60220-8_74" target="_blank" rel="noopener">The buffer tree: A new technique for optimal I/O-algorithms</a><br>[4] <a href="http://www.bzero.se/ldapd/btree.html" target="_blank" rel="noopener">how the append-only btree works</a><br>[5] <a href="https://www.douban.com/note/269741273/" target="_blank" rel="noopener">写优化的数据结构(1):AOF和b-tree之间</a><br>[6] <a href="https://www.douban.com/note/269744617/" target="_blank" rel="noopener">写优化的数据结构(2):buffered tree</a><br>[7] <a href="https://www.douban.com/note/304123656/" target="_blank" rel="noopener">存储引擎数据结构优化(1):cpu bound</a><br>[8] <a href="https://www.douban.com/note/304349195/" target="_blank" rel="noopener">存储引擎数据结构优化(2):io bound</a><br>[9] <a href="https://github.com/BohuTANG/nessDB" target="_blank" rel="noopener">nessDB</a><br>[10] <a href="https://github.com/BohuTANG/omt" target="_blank" rel="noopener">omt</a></p>
 
