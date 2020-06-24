@@ -15,11 +15,11 @@
   
 
   
-    <meta name="description" content="ClickHouse和他的朋友们： 编译、开发、测试" />
+    <meta name="description" content="ClickHouse和他的朋友们（1）编译、开发、测试" />
   
   
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <title>ClickHouse和他的朋友们： 编译、开发、测试 [ 虎哥的博客 ]</title>
+  <title>ClickHouse和他的朋友们（1）编译、开发、测试 [ 虎哥的博客 ]</title>
   
     <!-- stylesheets list from config.yml -->
     
@@ -74,7 +74,7 @@
   <article class="post" id="post">
     <header class="post-header text-center">
       <h1 class="title">
-        ClickHouse和他的朋友们： 编译、开发、测试
+        ClickHouse和他的朋友们（1）编译、开发、测试
       </h1>
       <span>
         
@@ -112,9 +112,14 @@
 
 <h3 id="测试方法"><a href="#测试方法" class="headerlink" title="测试方法"></a><b>测试方法</b></h3><p>ClickHouse的测试在官方<a href="https://github.com/ClickHouse/ClickHouse/blob/master/docs/en/development/tests.md" target="_blank" rel="noopener">development/tests</a>文档里有详细的介绍，这里列举3个常用的测试模式：</p>
 <h4 id="1-Functional-Tests"><a href="#1-Functional-Tests" class="headerlink" title="1. Functional Tests"></a>1. Functional Tests</h4><p>  功能测试，主要用于ClickHouse内部功能测试，方式：输入一个sql文件，输出一个result，类似MySQL里的mtr，<a href="https://github.com/ClickHouse/ClickHouse/tree/master/tests/queries" target="_blank" rel="noopener">测试集合</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd tests</span><br><span class="line">.&#x2F;clickhouse-test -c &quot;..&#x2F;build&#x2F;programs&#x2F;clickhouse-client&quot; 00001_select_1</span><br></pre></td></tr></table></figure>
+
+
+
+
 <h4 id="2-Integration-Tests"><a href="#2-Integration-Tests" class="headerlink" title="2. Integration Tests"></a>2. Integration Tests</h4><p>  集成测试，主要用于涉及第三方服务的测试，比如MySQL/Postgres/MongoDB等，以容器化方式编排调度(pytest)运行，<a href="https://github.com/ClickHouse/ClickHouse/tree/master/tests/integration" target="_blank" rel="noopener">测试集合</a></p>
 <p>  由于涉及模块较多，集成测试环境的搭建有一定的难度，建议使用官方的docker镜像。比如要跑test_mysql_protocol下的集成测试集：</p>
-  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd tests&#x2F;integration</span><br><span class="line">docker pull yandex&#x2F;clickhouse-integration-tests-runner</span><br><span class="line">.&#x2F;runner --binary &#x2F;your&#x2F;ClickHouse&#x2F;build&#x2F;dbms&#x2F;programs&#x2F;clickhouse  --bridge-binary &#x2F;your&#x2F;ClickHouse&#x2F;build&#x2F;dbms&#x2F;programs&#x2F;clickhouse-odbc-bridge --configs-dir &#x2F;your&#x2F;ClickHouse&#x2F;dbms&#x2F;programs&#x2F;server&#x2F; &#39;test_mysql_protocol&#x2F;test.py::test_java_client -ss -vv&#39;</span><br></pre></td></tr></table></figure>
+  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd tests&#x2F;integration</span><br><span class="line">docker pull yandex&#x2F;clickhouse-integration-tests-runner</span><br><span class="line">.&#x2F;runner --binary &#x2F;your&#x2F;ClickHouse&#x2F;build&#x2F;programs&#x2F;clickhouse  --bridge-binary &#x2F;your&#x2F;ClickHouse&#x2F;build&#x2F;programs&#x2F;clickhouse-odbc-bridge --configs-dir &#x2F;your&#x2F;ClickHouse&#x2F;programs&#x2F;server&#x2F; &#39;test_mysql_protocol&#x2F;test.py::test_java_client -ss -vv&#39;</span><br></pre></td></tr></table></figure>
 
 <h4 id="3-Unit-Tests"><a href="#3-Unit-Tests" class="headerlink" title="3. Unit Tests"></a>3. Unit Tests</h4><p>  单元测试，主要用于代码模块的测试，测试集在各个模块的tests目录，比如: <a href="https://github.com/ClickHouse/ClickHouse/tree/master/src/Core/tests" target="_blank" rel="noopener">Core/tests</a></p>
 <p>  如果大家想了解某个模块是如何工作的，强烈建议去翻翻该模块的tests目录，比如想了解processor的工作机制，跟踪调试 <a href="https://github.com/ClickHouse/ClickHouse/blob/master/src/Processors/tests/processors_test.cpp" target="_blank" rel="noopener">Processors/tests/</a> 即可。</p>
@@ -163,8 +168,8 @@
   
       <div class="post-nav-item post-nav-prev">
           
-          <a href="/2020/06/07/clickhouse-and-friends-mysql-protocol-read-stack/" rel="prev" title="ClickHouse和他的朋友们： MySQL Protocol和Read调用栈(上)">
-            ClickHouse和他的朋友们： MySQL Protocol和Read调用栈(上)
+          <a href="/2020/06/07/clickhouse-and-friends-mysql-protocol-read-stack/" rel="prev" title="ClickHouse和他的朋友们（2）MySQL Protocol和Read调用栈">
+            ClickHouse和他的朋友们（2）MySQL Protocol和Read调用栈
           </a>
           <span>〉</span>
         
