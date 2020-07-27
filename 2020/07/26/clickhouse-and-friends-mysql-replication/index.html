@@ -108,16 +108,12 @@
 <p>创建数据库和表，并写入数据:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create database ckdb;</span><br><span class="line">mysql&gt; use ckdb;</span><br><span class="line">mysql&gt; create table t1(a int not null primary key, b int);</span><br><span class="line">mysql&gt; insert into t1 values(1,1),(2,2);</span><br><span class="line">mysql&gt; select * from t1;</span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 1 |    1 |</span><br><span class="line">| 2 |    2 |</span><br><span class="line">+---+------+</span><br><span class="line">2 rows in set (0.00 sec)</span><br></pre></td></tr></table></figure>
 
-
-
 <h2 id="ClickHouse-Slave"><a href="#ClickHouse-Slave" class="headerlink" title="ClickHouse Slave "></a><b>ClickHouse Slave </b></h2><p>目前以 database 为单位进行复制，不同的 database 可以来自不同的 MySQL master，这样就可以实现多个 MySQL 源数据同步到一个 ClickHouse 做 OLAP 分析功能。</p>
 <p>创建一个复制通道：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">clickhouse :) CREATE DATABASE ckdb ENGINE &#x3D; MaterializeMySQL(&#39;172.17.0.2:3306&#39;, &#39;ckdb&#39;, &#39;root&#39;, &#39;123&#39;);</span><br><span class="line">clickhouse :) use ckdb;</span><br><span class="line">clickhouse :) show tables;</span><br><span class="line">┌─name─┐</span><br><span class="line">│ t1   │</span><br><span class="line">└──────┘</span><br><span class="line">clickhouse :) select * from t1;</span><br><span class="line">┌─a─┬─b─┐</span><br><span class="line">│ 1 │ 1 │</span><br><span class="line">└───┴───┘</span><br><span class="line">┌─a─┬─b─┐</span><br><span class="line">│ 2 │ 2 │</span><br><span class="line">└───┴───┘</span><br><span class="line"></span><br><span class="line">2 rows in set. Elapsed: 0.017 sec.</span><br></pre></td></tr></table></figure>
 
 <p>看下 ClickHouse 的同步位点：<br>cat ckdatas/metadata/ckdb/.metadata</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Version:	1</span><br><span class="line">Binlog File:	mysql-bin.000001</span><br><span class="line">Binlog Position:	913</span><br><span class="line">Data Version:	0</span><br></pre></td></tr></table></figure>
-
-
 
 <h2 id="Delete"><a href="#Delete" class="headerlink" title="Delete"></a><b>Delete</b></h2><p>首先在 MySQL Master 上执行一个删除操作：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; delete from t1 where a&#x3D;1;</span><br><span class="line">Query OK, 1 row affected (0.01 sec)</span><br></pre></td></tr></table></figure>
@@ -127,8 +123,6 @@
 
 <p>此时的 metadata 里 Data Version 已经递增到 2:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cat ckdatas&#x2F;metadata&#x2F;ckdb&#x2F;.metadata </span><br><span class="line">Version:	1</span><br><span class="line">Binlog File:	mysql-bin.000001</span><br><span class="line">Binlog Position:	1171</span><br><span class="line">Data Version:	2</span><br></pre></td></tr></table></figure>
-
-
 
 <h2 id="Update"><a href="#Update" class="headerlink" title="Update"></a><b>Update</b></h2><p>MySQL Master:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from t1;</span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 2 |    2 |</span><br><span class="line">+---+------+</span><br><span class="line">1 row in set (0.00 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; update t1 set b&#x3D;b+1;</span><br><span class="line"></span><br><span class="line">mysql&gt; select * from t1;</span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 2 |    3 |</span><br><span class="line">+---+------+</span><br><span class="line">1 row in set (0.00 sec)</span><br></pre></td></tr></table></figure>
@@ -195,6 +189,26 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">clickhouse :) select * from t1;</span><br><span class="line"></span><br><span class="line">SELECT *</span><br><span class="line">FROM t1</span><br><span class="line"></span><br><span class="line">┌─a─┬─b─┐</span><br><span class="line">│ 2 │ 3 │</span><br><span class="line">└───┴───┘</span><br><span class="line"></span><br><span class="line">clickhouse :) select *,_sign,_version from t1;</span><br><span class="line"></span><br><span class="line">SELECT </span><br><span class="line">    *,</span><br><span class="line">    _sign,</span><br><span class="line">    _version</span><br><span class="line">FROM t1</span><br><span class="line"></span><br><span class="line">┌─a─┬─b─┬─_sign─┬─_version─┐</span><br><span class="line">│ 1 │ 1 │    -1 │        2 │</span><br><span class="line">│ 2 │ 3 │     1 │        3 │</span><br><span class="line">└───┴───┴───────┴──────────┘</span><br><span class="line">说明：这里还有一条删除记录，_sign为-1</span><br></pre></td></tr></table></figure>
 
 <p>MaterializeMySQL 被定义成一种存储引擎，所以在读取的时候，会根据 _sign 状态进行判断，如果是-1则是已经删除，进行过滤。</p>
+<h2 id="并行回放"><a href="#并行回放" class="headerlink" title="并行回放"></a><b>并行回放</b></h2><p>为什么需要并行回放？</p>
+<p>假设 MySQL master 有 1024 个并发同时写入、更新数据，瞬间产生大量的 binlog event ，slave 上只有一个线程一个 event 接着一个 event 式回放，回放速度可想而知！</p>
+<p>那么，slave 回放时能否完全(或接近)模拟出 master 当时的 1024 并发行为呢？</p>
+<p>要想并行首先要解决的就是依赖问题：我们需要 master 标记出哪些 event 可以并行，哪些 event 有先后关系，因为它是第一现场。</p>
+<p>MySQL 通过在 binlog 里增加:</p>
+<ul>
+<li>last_committed，相同则可以并行</li>
+<li>sequece_number，较小先执行，描述先后依赖</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">last_committed&#x3D;3   sequece_number&#x3D;4   -- event1</span><br><span class="line">last_committed&#x3D;4   sequece_number&#x3D;5   -- event2</span><br><span class="line">last_committed&#x3D;4   sequece_number&#x3D;6   -- event3</span><br><span class="line">last_committed&#x3D;5   sequece_number&#x3D;7   -- event4</span><br></pre></td></tr></table></figure>
+
+<p>event2 和 event3 则可以并行，event4 需要等待前面 event 完成才可以回放。<br>以上只是一个大体原理，目前 MySQL 有３种并行模式可以选择：</p>
+<ol>
+<li>基于 database 并行</li>
+<li>基于 group commit 并行</li>
+<li>基于主键不冲突的 write set 并行</li>
+</ol>
+<p>最大程度上让slave加速回放。</p>
+<p>抛一个问题：有人在raft里实现这种机制吗？</p>
+<h2 id="读取最新"><a href="#读取最新" class="headerlink" title="读取最新"></a><b>读取最新</b></h2><p>虽然 slave 可以并行回放，但是主从数据总是有一定的延迟，如何在ClickHouse slave上读取到最新的数据呢？<br>其实非常简单，借助 MySQL binlog GTID 特性，每次读的时候，我们跟 ｍaster 做一次 executed_gtid 同步，然后等待这些executed_gtid回放完毕即可。</p>
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p>ClickHouse 实时复制同步 MySQL 数据是 upstream 2020 的一个 roadmap，在整体构架上比较有挑战一直无人接单，挑战主要来自两方面：</p>
 <ul>
 <li>对 MySQL 复制通道与协议非常熟悉</li>
@@ -204,6 +218,7 @@
 <p>关于同步 MySQL 的数据，目前大家的方案基本都是在中间安置一个 binlog 消费工具，这个工具对 event 进行解析，然后再转换成 ClickHouse 的 SQL 语句，写到 ClickHouse server，链路较长，性能损耗较大。</p>
 <p> <a href="https://github.com/ClickHouse/ClickHouse/pull/10851" target="_blank" rel="noopener">10851号</a> 高速是在 ClickHouse 内部实现一套 binlog 消费方案，然后根据 event 解析成ClickHouse 内部的 block 结构，再直接写回到底层存储引擎，几乎是最高效的一种实现方式。</p>
 <p>基于 database 级的复制，实现了多源复制的功能，如果复制通道坏掉，我们只需在 ClickHouse 侧删除掉 database 然后再重建一次即可，非常方便。</p>
+<p>借助 MySQL binlog GTID 特性，我们可以做到并行回放以及读取最新数据的能力，让数据更接近真实。</p>
 <p>对于单表的数据一致性，未来会实现一个 MySQL CRC 函数，用于校验 MySQL 与 ClickHouse 的数据一致性。</p>
 <p>要想富，先修路！</p>
 
@@ -214,7 +229,7 @@
     
   <div id="toc" class="toc-article">
     <strong class="toc-title">目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#代码获取"><span class="toc-text">代码获取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL-Master"><span class="toc-text"> MySQL Master</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ClickHouse-Slave"><span class="toc-text">ClickHouse Slave </span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Delete"><span class="toc-text">Delete</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Update"><span class="toc-text">Update</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现机制"><span class="toc-text">实现机制</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#DDL"><span class="toc-text">DDL</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Update和Delete"><span class="toc-text">Update和Delete</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Query"><span class="toc-text">Query</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#代码获取"><span class="toc-text">代码获取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL-Master"><span class="toc-text"> MySQL Master</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ClickHouse-Slave"><span class="toc-text">ClickHouse Slave </span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Delete"><span class="toc-text">Delete</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Update"><span class="toc-text">Update</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现机制"><span class="toc-text">实现机制</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#DDL"><span class="toc-text">DDL</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Update和Delete"><span class="toc-text">Update和Delete</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Query"><span class="toc-text">Query</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#并行回放"><span class="toc-text">并行回放</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#读取最新"><span class="toc-text">读取最新</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
   </div>
 
 
