@@ -224,7 +224,7 @@
 <li>基于主键不冲突的 write set 并行</li>
 </ol>
 <p>最大程度上让 MySQL slave加速回放，整套机制还是异常复杂的。</p>
-<p>回到 ClickHouse slave 问题，我们采用的单线程回放，延迟已经不是主要问题，这是由它们的机制决定的：<br>MySQL slave 回放时，需要把 binlog event 转换成  SQL，然后模拟 master 的写入，这种逻辑复制是导致性能低下的最重要原因。<br>而 ClickHouse 在回放上，直接把 binlog event 转换成 底层 block 结构，然后直接写入底层的存储引擎，接近于物理复制。</p>
+<p>回到 ClickHouse slave 问题，我们采用的单线程回放，延迟已经不是主要问题，这是由它们的机制决定的：<br>MySQL slave 回放时，需要把 binlog event 转换成  SQL，然后模拟 master 的写入，这种逻辑复制是导致性能低下的最重要原因。<br>而 ClickHouse 在回放上，直接把 binlog event 转换成 底层 block 结构，然后直接写入底层的存储引擎，接近于物理复制，可以理解为把 binlog event 直接回放到 InnoDB 的 page。</p>
 <h2 id="读取最新"><a href="#读取最新" class="headerlink" title="读取最新"></a><b>读取最新</b></h2><p>虽然 ClickHouse slave 回放非常快，接近于实时，如何在ClickHouse slave上总是读取到最新的数据呢？</p>
 <p>其实非常简单，借助 MySQL binlog GTID 特性，每次读的时候，我们跟 ｍaster 做一次 executed_gtid 同步，然后等待这些executed_gtid回放完毕即可。</p>
 <h2 id="数据一致性"><a href="#数据一致性" class="headerlink" title="数据一致性"></a><b>数据一致性</b></h2><p>对一致性要求较高的场景，我们怎么验证 MySQL master 的数据和 ClickHouse slave 的数据一致性呢？</p>
