@@ -185,7 +185,7 @@
 <h4 id="3-partition-minmax-index"><a href="#3-partition-minmax-index" class="headerlink" title="3. partition minmax index"></a><b>3. partition minmax index</b></h4><p>针对分区键，MergeTree 还会创建一个 min/max 索引，来加速分区选择。</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-minmax-idx.png" align="center" style="zoom:40%;" />
 
-<h4 id="4-全景图"><a href="#4-全景图" class="headerlink" title="4. 全景图 "></a><b>4. 全景图 </b></h4><img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-layout.png" align="center" style="zoom:40%;" />
+<h4 id="4-全景图"><a href="#4-全景图" class="headerlink" title="4. 全景图 "></a><b>4. 全景图 </b></h4><img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-layout.png" align="center" style="zoom:95%;" />
 
 <h2 id="查询优化"><a href="#查询优化" class="headerlink" title="查询优化"></a><b>查询优化</b></h2><p>现在熟悉了 MergeTree 的存储结构，我们通过几个查询来体验下。</p>
 <h3 id="1-分区键查询"><a href="#1-分区键查询" class="headerlink" title="1. 分区键查询"></a><b>1. 分区键查询</b></h3><p>语句：</p>
