@@ -96,7 +96,7 @@
 
     <div class="post-content">
       <p>21 世纪的第二个 10 年，虎哥已经在存储引擎一线奋战近 10 年，由于强大的兴趣驱动，这么多年来几乎不放过 arXiv 上与存储相关的每一篇 paper。<br>尤其是看到带有 draft 的 paper 时，有一种乞丐听到“叮当”响时的愉悦。<br>看paper这玩意就像鉴宝，多数是“赝品”，需要你有“鉴真”的本领，否则今天是张三的算法超越xx，明儿又是王二的硬件提升了yy，让你永远跟不上节奏zz，湮灭在这些没有营养的技术垃圾中，浪费大好青春。</p>
-<p>言归正传，接下来的3篇，跟 ClickHouse 的 MergeTree 引擎有关：<br><b>上篇介绍存储引擎的技术演进史</b>，从”远古”的 B-tree 出发推演到目前主流的技术架构。<br><b>中篇会从源码层面介绍 MergeTree 内核原理</b>，对 ClickHouse MergeTree 代码进行打点跟踪调试，提供一个阅码导航。<br><b>下篇会从实战出发</b>，基于 MergeTree 机制，如何合理设计来进行科学加速。</p>
+<p>言归正传，接下来的3篇，跟 ClickHouse 的 MergeTree 引擎有关：<br><b>上篇介绍存储引擎的技术演进史</b>，从”远古”的 B-tree 出发推演到目前主流的技术架构。<br><b><a href="/2020/06/26/clickhouse-and-friends-merge-tree-disk-layout/">中篇会从存储结构介绍 MergeTree 原理</a></b>，对 ClickHouse MergeTree 有一个深入的认识，如何合理设计来进行科学加速。<br><b>下篇会从MergeTree代码出发</b>，看看 ClickHouse MergeTree 如何实现读、写。</p>
 <p>本文为上篇，先来个热身，相信本篇大部分内容对大家来说都比较陌生，很少人写过。</p>
 <h2 id="地位"><a href="#地位" class="headerlink" title="地位"></a><b>地位</b></h2><p>存储引擎(事务型)在一个数据库(DBMS)中的地位如何呢？</p>
 <p>MySQL 的商业成功可以说大部分来自于 InnoDB 引擎，Oracle 收购 InnoDB 比 MySQL 早好几年呢！<br>20年前，能亲手撸一套 <a href="https://en.wikipedia.org/wiki/Algorithms_for_Recovery_and_Isolation_Exploiting_Semantics" target="_blank" rel="noopener">ARIES (Algorithms for Recovery and Isolation Exploiting Semantics)</a> 规范引擎，实力还是相当震撼的，相信 Oracle 收购的不仅是 InnoDB 这个引擎，更重要的是人， InnoDB 作者在哪里，在干什么？！<br>Fork 出来的 MariaDB 这么多年一直找不到自己的灵魂，在 Server 层磨磨蹭蹭可谓是江河日下，只能四处收购碰碰运气，当年 TokuDB 战斗过的 commit 依在，但这些已经是历史了。<br>另，WiredTiger 被 MongoDB 收购并使用，对整个生态所起的作用也是无可估量的，这些发动机引擎对于一辆汽车是非常重要的。</p>
@@ -206,8 +206,8 @@
   
       <div class="post-nav-item post-nav-prev">
           
-          <a href="/2020/07/25/clickhouse-and-friends-parser/" rel="prev" title="ClickHouse和他的朋友们（８）纯手工打造的SQL解析器">
-            ClickHouse和他的朋友们（８）纯手工打造的SQL解析器
+          <a href="/2020/06/26/clickhouse-and-friends-merge-tree-disk-layout/" rel="prev" title="ClickHouse和他的朋友们（6）MergeTree存储结构">
+            ClickHouse和他的朋友们（6）MergeTree存储结构
           </a>
           <span>〉</span>
         
