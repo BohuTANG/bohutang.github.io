@@ -95,13 +95,13 @@
     </header>
 
     <div class="post-content">
-      <p>很多人看到标题还以为自己走错了夜场，其实没有。</p>
-<p>ClickHouse  可以挂载为 MySQL 的一个从库 ，先全量再增量的实时同步 MySQL 数据，这个功能可以说是今年最亮眼、最刚需的功能，基于它我们可以轻松的打造一套企业级解决方案，让 OLTP 和 OLAP 的融合从此不再头疼。</p>
-<p>目前支持 MySQL 5.6/5.7/8.0 版本，兼容 Delete/Update 语句，及大部分常用的 DDL 操作。<br>代码还处于 Alpha 版本阶段，毕竟是两个异构生态的融合，仍然有不少的工作要做，同时也期待着社区用户的反馈，以加速迭代。</p>
-<h2 id="代码获取"><a href="#代码获取" class="headerlink" title="代码获取"></a><b>代码获取</b></h2><p>由于还在验收阶段，我们只好把 github 上的 pull request 代码 pull 到本地。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git fetch origin pull&#x2F;10851&#x2F;head:mysql_replica_experiment</span><br></pre></td></tr></table></figure>
+      <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/clickhouse-map-2020-materialzemysql.png" align="center" style="zoom:50%;" />
 
-<p>开始编译，方法见 <a href="/2020/06/05/clickhouse-and-friends-development/">ClickHouse和他的朋友们（1）编译、开发、测试</a>…</p>
+<p>很多人看到标题还以为自己走错了夜场，其实没有。</p>
+<p>ClickHouse  可以挂载为 MySQL 的一个从库 ，先全量再增量的实时同步 MySQL 数据，这个功能可以说是今年最亮眼、最刚需的功能，基于它我们可以轻松的打造一套企业级解决方案，让 OLTP 和 OLAP 的融合从此不再头疼。</p>
+<p>目前支持 MySQL 5.6/5.7/8.0 版本，兼容 Delete/Update 语句，及大部分常用的 DDL 操作。<br><a href="https://github.com/ClickHouse/ClickHouse/pull/10851" target="_blank" rel="noopener">代码</a>已经合并到 upstream master 分支，预计在20.8版本作为experimental 功能发布。</p>
+<p>毕竟是两个异构生态的融合，仍然有不少的工作要做，同时也期待着社区用户的反馈，以加速迭代。</p>
+<h2 id="代码获取"><a href="#代码获取" class="headerlink" title="代码获取"></a><b>代码获取</b></h2><p>获取 <a href="https://github.com/ClickHouse/ClickHouse" target="_blank" rel="noopener">clickhouse/master</a> 代码编译即可，方法见 <a href="/2020/06/05/clickhouse-and-friends-development/">ClickHouse和他的朋友们（1）编译、开发、测试</a>…</p>
 <h2 id="MySQL-Master"><a href="#MySQL-Master" class="headerlink" title=" MySQL Master"></a><b> MySQL Master</b></h2><p>我们需要一个开启 binlog 的 MySQL 作为 master:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -e MYSQL_ROOT_PASSWORD&#x3D;123 mysql:5.7 mysqld --datadir&#x3D;&#x2F;var&#x2F;lib&#x2F;mysql --server-id&#x3D;1 --log-bin&#x3D;&#x2F;var&#x2F;lib&#x2F;mysql&#x2F;mysql-bin.log --gtid-mode&#x3D;ON --enforce-gtid-consistency</span><br></pre></td></tr></table></figure>
 
@@ -109,6 +109,9 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create database ckdb;</span><br><span class="line">mysql&gt; use ckdb;</span><br><span class="line">mysql&gt; create table t1(a int not null primary key, b int);</span><br><span class="line">mysql&gt; insert into t1 values(1,1),(2,2);</span><br><span class="line">mysql&gt; select * from t1;</span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 1 |    1 |</span><br><span class="line">| 2 |    2 |</span><br><span class="line">+---+------+</span><br><span class="line">2 rows in set (0.00 sec)</span><br></pre></td></tr></table></figure>
 
 <h2 id="ClickHouse-Slave"><a href="#ClickHouse-Slave" class="headerlink" title="ClickHouse Slave "></a><b>ClickHouse Slave </b></h2><p>目前以 database 为单位进行复制，不同的 database 可以来自不同的 MySQL master，这样就可以实现多个 MySQL 源数据同步到一个 ClickHouse 做 OLAP 分析功能。</p>
+<p>首先开启体验开关:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">clickhouse :) SET allow_experimental_database_materialize_mysql&#x3D;1;</span><br></pre></td></tr></table></figure>
+
 <p>创建一个复制通道：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">clickhouse :) CREATE DATABASE ckdb ENGINE &#x3D; MaterializeMySQL(&#39;172.17.0.2:3306&#39;, &#39;ckdb&#39;, &#39;root&#39;, &#39;123&#39;);</span><br><span class="line">clickhouse :) use ckdb;</span><br><span class="line">clickhouse :) show tables;</span><br><span class="line">┌─name─┐</span><br><span class="line">│ t1   │</span><br><span class="line">└──────┘</span><br><span class="line">clickhouse :) select * from t1;</span><br><span class="line">┌─a─┬─b─┐</span><br><span class="line">│ 1 │ 1 │</span><br><span class="line">└───┴───┘</span><br><span class="line">┌─a─┬─b─┐</span><br><span class="line">│ 2 │ 2 │</span><br><span class="line">└───┴───┘</span><br><span class="line"></span><br><span class="line">2 rows in set. Elapsed: 0.017 sec.</span><br></pre></td></tr></table></figure>
 
@@ -234,7 +237,7 @@
 <li>对 MySQL 复制通道与协议非常熟悉</li>
 <li>对 ClickHouse 整体机制非常熟悉</li>
 </ul>
-<p>这样，在两个本来有点遥远的山头中间架起了一座高速，这条 <a href="https://github.com/ClickHouse/ClickHouse/pull/10851" target="_blank" rel="noopener">10851号</a> 高速由 zhang1024(ClickHouse侧) 和 BohuTANG(MySQL复制) 两个修路工联合承建，目前正在接受 upstream 的验收。</p>
+<p>这样，在两个本来有点遥远的山头中间架起了一座高速，这条 <a href="https://github.com/ClickHouse/ClickHouse/pull/10851" target="_blank" rel="noopener">10851号</a> 高速由 zhang1024(ClickHouse侧) 和 BohuTANG(MySQL复制) 两个修路工联合承建，目前已经合并到 upstream 分支。</p>
 <p>关于同步 MySQL 的数据，目前大家的方案基本都是在中间安置一个 binlog 消费工具，这个工具对 event 进行解析，然后再转换成 ClickHouse 的 SQL 语句，写到 ClickHouse server，链路较长，性能损耗较大。</p>
 <p> <a href="https://github.com/ClickHouse/ClickHouse/pull/10851" target="_blank" rel="noopener">10851号</a> 高速是在 ClickHouse 内部实现一套 binlog 消费方案，然后根据 event 解析成 ClickHouse 内部的 block 结构，再直接回写到底层存储引擎，几乎是最高效的一种实现方式，实现与 MySQL 实时同步的能力，让分析更接近现实。</p>
 <p>基于 database 级的复制，实现了多源复制的功能，如果复制通道坏掉，我们只需在 ClickHouse 侧删掉 database 再重建一次即可，非常快速、方便，OLTP+OLAP 就是这么简单！</p>
