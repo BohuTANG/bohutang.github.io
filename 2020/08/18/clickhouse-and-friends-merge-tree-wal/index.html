@@ -95,10 +95,11 @@
     </header>
 
     <div class="post-content">
-      <p>数据库系统为了提高写入性能，会把数据先写到内存，等“攒”到一定程度后再回写到磁盘，比如 MySQL 的 buffer pool 机制。</p>
+      <p><b>最后更新: 2020-08-26</b></p>
+<p>数据库系统为了提高写入性能，会把数据先写到内存，等“攒”到一定程度后再回写到磁盘，比如 MySQL 的 buffer pool 机制。</p>
 <p>因为数据先写到内存，为了数据的安全性，我们需要一个 Write-Ahead Log (WAL) 来保证内存数据的安全性。</p>
 <p>今天我们来看看 ClickHouse 新增的 <a href="https://github.com/ClickHouse/ClickHouse/pull/8290" target="_blank" rel="noopener">MergeTreeWriteAheadLog</a> 模块，它到底解决了什么问题。</p>
-<h2 id="低频写问题"><a href="#低频写问题" class="headerlink" title="低频写问题"></a><b>低频写问题</b></h2><p>对于 ClickHouse MergeTree 引擎，每次写入(即使１条数据)都会在磁盘生成一个分区目录(part)，等着 merge 线程合并。</p>
+<h2 id="高频写问题"><a href="#高频写问题" class="headerlink" title="高频写问题"></a><b>高频写问题</b></h2><p>对于 ClickHouse MergeTree 引擎，每次写入(即使１条数据)都会在磁盘生成一个分区目录(part)，等着 merge 线程合并。</p>
 <p>如果有多个客户端，每个客户端写入的数据量较少、次数较频繁的情况下，就会引发 <code>DB::Exception: Too many parts</code> 错误。</p>
 <p>这样就对客户端有一定的要求，比如需要做 batch 写入。</p>
 <p>或者，写入到 Buffer 引擎，定时的刷回 MergeTree，缺点是在宕机时可能会丢失数据。</p>
@@ -131,7 +132,7 @@
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p>WAL 功能在 <a href="https://github.com/ClickHouse/ClickHouse/pull/8290" target="_blank" rel="noopener">PR＃8290</a> 实现，通过以下两个 SETTINGS 开启，目前还是 Experimental：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">min_bytes_for_compact_part</span><br><span class="line">&quot;Experimental. Minimal uncompressed size in bytes to create part in compact format instead of saving it in RAM&quot;</span><br><span class="line"></span><br><span class="line">min_rows_for_compact_part</span><br><span class="line">&quot;Experimental. Minimal number of rows to create part in compact format instead of saving it in RAM&quot;</span><br></pre></td></tr></table></figure>
 
-<p>MergeTree 通过 WAL 来保护客户端的低频、少量写机制，减少服务端目录和文件数量，让客户端操作尽可能简单、高效。</p>
+<p>MergeTree 通过 WAL 来保护客户端的高频、少量写机制，减少服务端目录和文件数量，让客户端操作尽可能简单、高效。</p>
 
     </div>
 
@@ -140,7 +141,7 @@
     
   <div id="toc" class="toc-article">
     <strong class="toc-title">目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#低频写问题"><span class="toc-text">低频写问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MergeTree-WAL"><span class="toc-text">MergeTree WAL</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-默认模式"><span class="toc-text">1. 默认模式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-WAL模式"><span class="toc-text">2. WAL模式</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#高频写问题"><span class="toc-text">高频写问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MergeTree-WAL"><span class="toc-text">MergeTree WAL</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-默认模式"><span class="toc-text">1. 默认模式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-WAL模式"><span class="toc-text">2. WAL模式</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
   </div>
 
 
@@ -170,6 +171,11 @@
   
       <div class="post-nav-item post-nav-prev">
           
+          <a href="/2020/08/26/clickhouse-and-friends-mysql-gtid-replication/" rel="prev" title="ClickHouse和他的朋友们（11）MySQL实时复制之GTID模式">
+            ClickHouse和他的朋友们（11）MySQL实时复制之GTID模式
+          </a>
+          <span>〉</span>
+        
       </div>
     </div>
   
