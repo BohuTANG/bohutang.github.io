@@ -97,7 +97,7 @@
     <div class="post-content">
       <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/clickhouse-map-2020-materialzemysql.png" align="center" style="zoom:50%;" />
 
-<p><b>最后更新: 2020-08-26</b></p>
+<p><b>最后更新: 2020-09-03</b></p>
 <p> <a href="/2020/07/26/clickhouse-and-friends-mysql-replication/">MySQL实时复制原理篇</a></p>
 <p>几天前 ClickHouse 官方发布了 <a href="https://github.com/ClickHouse/ClickHouse/releases/tag/v20.8.1.4447-testing" target="_blank" rel="noopener">v20.8.1.4447-testing</a>，这个版本已经包含了 MaterializeMySQL 引擎，实现了 ClickHouse 实时复制 MySQL 数据的能力，感兴趣的朋友可以通过官方安装包来做体验，安装方式参考: <a href="https://clickhouse.tech/#quick-start" target="_blank" rel="noopener">https://clickhouse.tech/#quick-start</a>，需要注意的是要选择 testing 分支。</p>
 <h2 id="基于位点同步"><a href="#基于位点同步" class="headerlink" title="基于位点同步"></a><b>基于位点同步</b></h2><p>MaterializeMySQL 在 v20.8.1.4447-testing 版本是基于 binlog 位点模式进行同步的。</p>
@@ -111,7 +111,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">s1&gt; ClickHouse 发送 &#123;&#39;mysql-bin.000002&#39;, 328&#125; 给集群新主 MySQL</span><br><span class="line">s2&gt; 新主 MySQL 发现本地没有 mysql-bin.000002 文件，因为它做过 reset master 操作，binlog 文件是 mysql-bin.000001</span><br><span class="line">... oops ...</span><br></pre></td></tr></table></figure>
 
 <p>为了解决这个问题，我们开发了 GTID 同步模式，废弃了不安全的位点同步模式，目前已被 upstream merged <a href="https://github.com/ClickHouse/ClickHouse/pull/13820" target="_blank" rel="noopener">#PR13820</a>，下一个 testing 版本即可体验。</p>
-<p>着急的话可以自己编译或通过 <a href="https://clickhouse-builds.s3.yandex.net/0/cff92c8ad3dea2d96b1dfaadc76c3c10b3d701b2/clickhouse_build_check/report.html" target="_blank" rel="noopener">ClickHouse Build Check for master</a> 下载安装。</p>
+<p>着急的话可以自己编译或通过 <a href="https://clickhouse-builds.s3.yandex.net/0/2b8ad576cc3892d2d760f3f8b670adf17db0c2a0/clickhouse_build_check/report.html" target="_blank" rel="noopener">ClickHouse Build Check for master-20.9.1</a> 下载安装。</p>
 <h2 id="基于GTID同步"><a href="#基于GTID同步" class="headerlink" title="基于GTID同步"></a><b>基于GTID同步</b></h2><p>GTID 是 MySQL 复制增强版，从 MySQL 5.6 版本开始支持，目前已经是 MySQL 主流复制模式。</p>
 <p>它为每个 event 分配一个全局唯一ID和序号，我们可以不用关心 MySQL 集群主从拓扑结构，直接告知 MySQL 这个 GTID 即可，.metadata变为:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Version:	2</span><br><span class="line">Executed GTID:	f4aee41e-e36f-11ea-8b37-0242ac110002:1-5</span><br><span class="line">Data Version:	1</span><br></pre></td></tr></table></figure>
