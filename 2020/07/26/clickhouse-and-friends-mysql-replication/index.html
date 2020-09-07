@@ -97,6 +97,7 @@
     <div class="post-content">
       <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/clickhouse-map-2020-materialzemysql.png" align="center" style="zoom:50%;" />
 
+<p><b>最后更新: 2020-09-08</b></p>
 <p>很多人看到标题还以为自己走错了夜场，其实没有。</p>
 <p>ClickHouse  可以挂载为 MySQL 的一个从库 ，先全量再增量的实时同步 MySQL 数据，这个功能可以说是今年最亮眼、最刚需的功能，基于它我们可以轻松的打造一套企业级解决方案，让 OLTP 和 OLAP 的融合从此不再头疼。</p>
 <p>目前支持 MySQL 5.6/5.7/8.0 版本，兼容 Delete/Update 语句，及大部分常用的 DDL 操作。<br><a href="https://github.com/ClickHouse/ClickHouse/pull/10851" target="_blank" rel="noopener">代码</a>已经合并到 upstream master 分支，预计在20.8版本作为experimental 功能发布。</p>
@@ -182,6 +183,23 @@
 <li>原主键字段 a 作为排序和分区键</li>
 </ul>
 <p>这只是一个表的复制，其他还有非常多的DDL处理，比如增加列、索引等，感兴趣可以观摩 Parsers/MySQL 下代码。</p>
+<h3 id="索引转换"><a href="#索引转换" class="headerlink" title="索引转换"></a><b>索引转换</b></h3><p>MySQL 对应的主键/索引如何对应到 MaterializeMySQL 表结构呢？</p>
+<p>首先针对 MySQL 建表语句进行key扫描，<a href="https://github.com/ClickHouse/ClickHouse/blob/1076a42cf599c7eedd7d0cda2246f9afaf6434a4/src/Interpreters/MySQL/InterpretersMySQLDDLQuery.cpp#L157" target="_blank" rel="noopener">InterpretersMySQLDDLQuery::getKeys</a>：</p>
+<ol>
+<li>扫描 unique_key</li>
+<li>扫描 primary_key</li>
+<li>扫描 auto_increment</li>
+</ol>
+<p>其次根据 key 按照以下顺序生成 OrderBy tuple 表达式，<a href="https://github.com/ClickHouse/ClickHouse/blob/1076a42cf599c7eedd7d0cda2246f9afaf6434a4/src/Interpreters/MySQL/InterpretersMySQLDDLQuery.cpp#L288" target="_blank" rel="noopener">InterpretersMySQLDDLQuery::getOrderByPolicy</a>：</p>
+<ol>
+<li>primary_key[not increment]</li>
+<li>key[not increment]</li>
+<li>unique[not increment]</li>
+<li>unique[increment]</li>
+<li>key[increment]</li>
+<li>primary_key[increment]</li>
+</ol>
+<p>ClickHouse 的物理序目前只有一种(多物理序有一定的规划)，是有 OrderBy 决定，所以 MaterializeMySQL 索引如果利用不佳，可以使用物化视图建立新的物理序解决。</p>
 <h3 id="Update和Delete"><a href="#Update和Delete" class="headerlink" title="Update和Delete"></a><b>Update和Delete</b></h3><p>当我们在 MySQL master 执行：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; delete from t1 where a&#x3D;1;</span><br><span class="line">mysql&gt; update t1 set b&#x3D;b+1;</span><br></pre></td></tr></table></figure>
 
@@ -242,6 +260,7 @@
 <p> <a href="https://github.com/ClickHouse/ClickHouse/pull/10851" target="_blank" rel="noopener">10851号</a> 高速是在 ClickHouse 内部实现一套 binlog 消费方案，然后根据 event 解析成 ClickHouse 内部的 block 结构，再直接回写到底层存储引擎，几乎是最高效的一种实现方式，实现与 MySQL 实时同步的能力，让分析更接近现实。</p>
 <p>基于 database 级的复制，实现了多源复制的功能，如果复制通道坏掉，我们只需在 ClickHouse 侧删掉 database 再重建一次即可，非常快速、方便，OLTP+OLAP 就是这么简单！</p>
 <p>要想富，先修路！</p>
+<p><a href="/3030/12/12/clickhouse-and-friends-mysql-replication-materializemysql/">【置顶】ClickHouse MaterializeMySQL实时同步MySQL汇总</a></p>
 
     </div>
 
@@ -250,7 +269,7 @@
     
   <div id="toc" class="toc-article">
     <strong class="toc-title">目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#代码获取"><span class="toc-text">代码获取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL-Master"><span class="toc-text"> MySQL Master</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ClickHouse-Slave"><span class="toc-text">ClickHouse Slave </span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Delete"><span class="toc-text">Delete</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Update"><span class="toc-text">Update</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#性能测试"><span class="toc-text">性能测试</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#测试环境"><span class="toc-text">测试环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#全量性能"><span class="toc-text">全量性能</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#增量性能-实时同步"><span class="toc-text">增量性能(实时同步)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现机制"><span class="toc-text">实现机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#DDL"><span class="toc-text">DDL</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Update和Delete"><span class="toc-text">Update和Delete</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Query"><span class="toc-text">Query</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#并行回放"><span class="toc-text">并行回放</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#读取最新"><span class="toc-text">读取最新</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#数据一致性"><span class="toc-text">数据一致性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#代码获取"><span class="toc-text">代码获取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL-Master"><span class="toc-text"> MySQL Master</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ClickHouse-Slave"><span class="toc-text">ClickHouse Slave </span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Delete"><span class="toc-text">Delete</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Update"><span class="toc-text">Update</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#性能测试"><span class="toc-text">性能测试</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#测试环境"><span class="toc-text">测试环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#全量性能"><span class="toc-text">全量性能</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#增量性能-实时同步"><span class="toc-text">增量性能(实时同步)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现机制"><span class="toc-text">实现机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#DDL"><span class="toc-text">DDL</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#索引转换"><span class="toc-text">索引转换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Update和Delete"><span class="toc-text">Update和Delete</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Query"><span class="toc-text">Query</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#并行回放"><span class="toc-text">并行回放</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#读取最新"><span class="toc-text">读取最新</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#数据一致性"><span class="toc-text">数据一致性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
   </div>
 
 
