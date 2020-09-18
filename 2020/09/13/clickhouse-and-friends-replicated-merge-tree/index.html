@@ -134,7 +134,7 @@
 
 <h2 id="3-总结"><a href="#3-总结" class="headerlink" title="3. 总结"></a><b>3. 总结</b></h2><p>本文以写入为例，从底层分析了 ClickHouse ReplicatedMergeTree 的工作原理，逻辑并不复杂。</p>
 <p>不同 replica 的数据同步需要 zookeeper(目前社区有人在做etcd的集成 <a href="https://github.com/ClickHouse/ClickHouse/pull/10376" target="_blank" rel="noopener">pr#10376</a>)做元数据协调，是一个订阅/消费模型，涉及具体数据目录还需要去相应的 replica 通过 interserver_http_port 端口进行下载。</p>
-<p>replica 的同步都是以文件目录为单位，这样就带来一个好处：我们<b>可以轻松实现 ClickHouse 的存储计算分离</b>，多个 clickhouse-server 可以同时挂载同一份数据进行计算，而且这些 server 每个节点都是可写，虎哥已经实现了一个可以 work 的原型，详情请参考未来篇 &lt;如何实现计算存储分离&gt;。</p>
+<p>replica 的同步都是以文件目录为单位，这样就带来一个好处：我们<b>可以轻松实现 ClickHouse 的存储计算分离</b>，多个 clickhouse-server 可以同时挂载同一份数据进行计算，而且这些 server 每个节点都是可写，虎哥已经实现了一个可以 work 的原型，详情请参考下篇 <a href="/2020/09/18/clickhouse-and-friends-compute-storage/">&lt;存储计算分离方案与实现&gt;</a>。</p>
 <h2 id="4-参考"><a href="#4-参考" class="headerlink" title="4. 参考"></a><b>4. 参考</b></h2><p>[1]  <a href="https://github.com/ClickHouse/ClickHouse/blob/f37814b36754bf11b52bd9c77d0e15f4d1825033/src/Storages/StorageReplicatedMergeTree.cpp" target="_blank" rel="noopener">StorageReplicatedMergeTree.cpp</a><br>[2] <a href="https://github.com/ClickHouse/ClickHouse/blob/f37814b36754bf11b52bd9c77d0e15f4d1825033/src/Storages/MergeTree/ReplicatedMergeTreeBlockOutputStream.cpp" target="_blank" rel="noopener">ReplicatedMergeTreeBlockOutputStream.cpp</a><br>[3] <a href="https://github.com/ClickHouse/ClickHouse/blob/f37814b36754bf11b52bd9c77d0e15f4d1825033/src/Storages/MergeTree/ReplicatedMergeTreeLogEntry.cpp" target="_blank" rel="noopener">ReplicatedMergeTreeLogEntry.cpp</a><br>[4] <a href="https://github.com/ClickHouse/ClickHouse/blob/f37814b36754bf11b52bd9c77d0e15f4d1825033/src/Storages/MergeTree/ReplicatedMergeTreeQueue.cpp" target="_blank" rel="noopener">ReplicatedMergeTreeQueue.cpp</a></p>
 
     </div>
@@ -174,8 +174,8 @@
   
       <div class="post-nav-item post-nav-prev">
           
-          <a href="/3030/12/12/clickhouse-and-friends-mysql-replication-materializemysql/" rel="prev" title="【置顶】ClickHouse MaterializeMySQL实时同步MySQL汇总">
-            【置顶】ClickHouse MaterializeMySQL实时同步MySQL汇总
+          <a href="/2020/09/18/clickhouse-and-friends-compute-storage/" rel="prev" title="ClickHouse和他的朋友们（14）存储计算分离方案与实现">
+            ClickHouse和他的朋友们（14）存储计算分离方案与实现
           </a>
           <span>〉</span>
         

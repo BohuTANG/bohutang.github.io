@@ -11,15 +11,15 @@
   <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
   
   
-    <meta name="keywords" content="clickhouse,ClickHouse和他的朋友们,mysql,replication,GTID,materializemysql," />
+    <meta name="keywords" content="clickhouse,ClickHouse和他的朋友们,replicatedmergetree,storage,compute," />
   
 
   
-    <meta name="description" content="【置顶】ClickHouse MaterializeMySQL实时同步MySQL汇总" />
+    <meta name="description" content="ClickHouse和他的朋友们（14）存储计算分离方案与实现" />
   
   
   <link rel="icon" type="image/x-icon" href="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/favicon.ico">
-  <title>【置顶】ClickHouse MaterializeMySQL实时同步MySQL汇总 [ 虎哥的博客 ]</title>
+  <title>ClickHouse和他的朋友们（14）存储计算分离方案与实现 [ 虎哥的博客 ]</title>
   
     <!-- stylesheets list from config.yml -->
     
@@ -74,19 +74,19 @@
   <article class="post" id="post">
     <header class="post-header text-center">
       <h1 class="title">
-        【置顶】ClickHouse MaterializeMySQL实时同步MySQL汇总
+        ClickHouse和他的朋友们（14）存储计算分离方案与实现
       </h1>
       <span>
         
-        <time class="time" datetime="3030-12-11T16:00:00.000Z">
-        3030-12-12
+        <time class="time" datetime="2020-09-17T16:00:00.000Z">
+        2020-09-18
       </time>
         
       </span>
       <span class="slash">/</span>
       <span class="post-meta">
       <span class="post-tags">
-        <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/ClickHouse%E5%92%8C%E4%BB%96%E7%9A%84%E6%9C%8B%E5%8F%8B%E4%BB%AC/" rel="tag">ClickHouse和他的朋友们</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GTID/" rel="tag">GTID</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/clickhouse/" rel="tag">clickhouse</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/materializemysql/" rel="tag">materializemysql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/mysql/" rel="tag">mysql</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/replication/" rel="tag">replication</a></li></ul>
+        <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/ClickHouse%E5%92%8C%E4%BB%96%E7%9A%84%E6%9C%8B%E5%8F%8B%E4%BB%AC/" rel="tag">ClickHouse和他的朋友们</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/clickhouse/" rel="tag">clickhouse</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/compute/" rel="tag">compute</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/replicatedmergetree/" rel="tag">replicatedmergetree</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/storage/" rel="tag">storage</a></li></ul>
       </span>
     </span>
       <span class="read">
@@ -95,43 +95,45 @@
     </header>
 
     <div class="post-content">
-      <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/clickhouse-map-2020-materialzemysql.png" align="center" style="zoom:50%;" />
+      <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/clickhouse-map-2020-replicatedmergetree.png" align="center" style="zoom:50%;" />
 
-<p><b>最后更新: 2020-09-04</b></p>
-<h2 id="1-如何下载"><a href="#1-如何下载" class="headerlink" title="1. 如何下载"></a><b>1. 如何下载</b></h2><p>因为 MaterializeMySQL 还处于 experimental 阶段，根据社区反馈的问题、需求我们也在进行修复和开发，请大家尽量下载最新版进行体验:</p>
-<p>先打开 <a href="https://github.com/ClickHouse/ClickHouse/commits/master" target="_blank" rel="noopener">https://github.com/ClickHouse/ClickHouse/commits/master</a>  </p>
-<p>选择一个</p>
-<p>目前任何 master 分支的 build 都可以试用，比如 <a href="https://clickhouse-builds.s3.yandex.net/0/2b8ad576cc3892d2d760f3f8b670adf17db0c2a0/clickhouse_build_check/report.html" target="_blank" rel="noopener">ClickHouse Build Check for master-20.9.1</a> 下载安装。</p>
-<h2 id="2-如何使用"><a href="#2-如何使用" class="headerlink" title="2. 如何使用"></a><b>2. 如何使用</b></h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CREATE DATABASE ckdb ENGINE &#x3D; MaterializeMySQL(&#39;[mysql-host]:[mysql-port]&#39;, &#39;[mysql-database]&#39;, &#39;[mysql-user]&#39;, &#39;[mysql-password]&#39;);</span><br></pre></td></tr></table></figure>
+<p><b>最后更新: 2020-09-18</b></p>
+<p>如果多个 ClickHouse server 可以挂载同一份数据(分布式存储等)，并且每个 server 都可写，这样会有什么好处呢？</p>
+<p>首先，我们可以把副本机制交给分布式存储来保障，上层架构变得简单朴素；</p>
+<p>其次，clickhouse-server 可以在任意机器上增加、减少，使存储和计算能力得到充分发挥。</p>
+<p>本文就来探讨一下 ClickHouse 的存储计算分离方案，实现上并不复杂。</p>
+<h2 id="1-问题"><a href="#1-问题" class="headerlink" title="1. 问题"></a><b>1. 问题</b></h2><p>ClickHouse 运行时数据由两部分组成：<b>内存元数据</b>和<b>磁盘数据</b>。</p>
+<p>我们先看写流程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">w1. 开始写入数据</span><br><span class="line">w2. 生成内存part信息，并维护part metadata列表</span><br><span class="line">w3. 把part数据写到磁盘</span><br></pre></td></tr></table></figure>
+
+<p>再来看读流程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">r1. 从part metadata定位需要读取的part</span><br><span class="line">r2. 从磁盘读取part数据</span><br><span class="line">r3. 返回给上层数据</span><br></pre></td></tr></table></figure>
+
+<p>这样，如果 server1 写了一条数据，只会更新自己内存的 part metadata，其他 server 是感知不到的，这样也就无法查询到刚写入的数据。</p>
+<p>存储计算分离，首先要解决的就是内存状态数据的同步问题。</p>
+<p>在 ClickHouse 里，我们需要解决的是内存中 part metadata 同步问题。</p>
+<h2 id="2-内存数据同步"><a href="#2-内存数据同步" class="headerlink" title="2. 内存数据同步"></a><b>2. 内存数据同步</b></h2><p>在上篇 <a href="/2020/09/13/clickhouse-and-friends-replicated-merge-tree/">&lt;ReplicatedMergeTree表引擎及同步机制&gt;</a> 中，我们知道副本间的数据同步机制：<br>首先同步元数据，再通过元数据获取相应part数据。</p>
+<p>这里，我们借用 ReplicatedMergeTree 同步通道，然后再做减法，同步完元数据后跳过 part 数据的同步，因为磁盘数据只需一个 server 做更新(需要 fsync 语义)即可。</p>
+<p>核心代码：<br>MergeTreeData::renameTempPartAndReplace</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">if (!share_storage)</span><br><span class="line">    part-&gt;renameTo(part_name, true);</span><br></pre></td></tr></table></figure>
 
 
 
-<h2 id="3-更新汇总"><a href="#3-更新汇总" class="headerlink" title="3. 更新汇总"></a><b>3. 更新汇总</b></h2><ul>
-<li><input disabled="" type="checkbox"> 支持 decimal 类型 <a href="https://github.com/ClickHouse/ClickHouse/pull/11512" target="_blank" rel="noopener">WIP PR#11512</a></li>
-<li><input disabled="" type="checkbox"> 支持 DATETIME(x)  fractional seconds precision [WIP]</li>
-<li><input disabled="" type="checkbox"> 支持 YEAR, TIME 类型 (TODO)</li>
-<li><input disabled="" type="checkbox"> 支持 DROP TABLE database.table, table_2, … 语法  (TODO)</li>
-<li><input disabled="" type="checkbox"> 支持 gc thread 清理已经 deleted 的数据  (TODO)</li>
-<li><input disabled="" type="checkbox"> 支持复制状态查询 (TODO)</li>
-</ul>
-<h2 id="4-遇到问题"><a href="#4-遇到问题" class="headerlink" title=" 4. 遇到问题"></a><b> 4. 遇到问题</b></h2><ul>
-<li><p><a href="https://github.com/ClickHouse/ClickHouse/issues/new?assignees=&labels=bug&template=bug-report.md&title=" target="_blank" rel="noopener">提bug</a></p>
-</li>
-<li><p><a href="https://github.com/ClickHouse/ClickHouse/issues/new?assignees=&labels=question&template=question.md&title=" target="_blank" rel="noopener">提问题/需求</a></p>
-</li>
-<li><p>加入 ClickHouse 交流社群，请在 <a href="/about/">about</a> 添加博主后提申请</p>
-</li>
-</ul>
-<h2 id="5-问题线索采集"><a href="#5-问题线索采集" class="headerlink" title="5. 问题线索采集"></a><b>5. 问题线索采集</b></h2><h3 id="5-1-错误日志"><a href="#5-1-错误日志" class="headerlink" title=" 5.1 错误日志"></a><b> 5.1 错误日志</b></h3><p>clickhouse-server log 错误日志</p>
-<h3 id="5-2-执行的SQL操作"><a href="#5-2-执行的SQL操作" class="headerlink" title="5.2 执行的SQL操作"></a><b>5.2 执行的SQL操作</b></h3><ul>
-<li><p>MySQL 表结构</p>
-</li>
-<li><p>MySQL 侧配置</p>
-</li>
-<li><p>MySQL 侧执行过的 SQL</p>
-</li>
-</ul>
-<h2 id="6-相关博文"><a href="#6-相关博文" class="headerlink" title="6. 相关博文"></a><b>6. 相关博文</b></h2><p><a href="/2020/07/26/clickhouse-and-friends-mysql-replication/">ClickHouse和他的朋友们（9）MySQL实时复制与实现</a><br><a href="/2020/08/26/clickhouse-and-friends-mysql-gtid-replication/">ClickHouse和他的朋友们（11）MySQL实时复制之GTID模式</a></p>
+<h2 id="3-演示demo"><a href="#3-演示demo" class="headerlink" title="3. 演示demo"></a><b>3. 演示demo</b></h2><figure class="video_container">
+  <iframe src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/video/clickhouse-storage-compute.mp4" frameborder="0" allowfullscreen="true"> </iframe>
+</figure>
+
+<p>script：</p>
+<ol>
+<li>首先起 2 个 clickhouse-server，它们都挂载同一份数据 <code>&lt;path&gt;/home/bohu/work/cluster/d1/datas/&lt;/path&gt;</code></li>
+<li>通过 clickhouse-server1(port 9101) 写入一条记录:(111, 3333)</li>
+<li>通过 clickhouse-server2(port 9102) 进行查询正常</li>
+<li>通过 clickhouse-server2(port 9102) truncate 表</li>
+<li>通过 clickhouse-server1(port 9101) 查询正常</li>
+</ol>
+<h2 id="4-代码实现"><a href="#4-代码实现" class="headerlink" title="4. 代码实现"></a><b>4. 代码实现</b></h2><p><a href="https://github.com/BohuTANG/ClickHouse/commit/f67d98ef408fda1a359e4fb17848619ef1f6e59b" target="_blank" rel="noopener">原型</a><br>需要注意的是，这里只实现了写入数据同步，而且是非常 tricky 的方式。</p>
+<p>由于 DDL 没有实现，所以在 zookeeper 上的注册方式也比较 tricky，demo 里的 replicas 都是手工注册的。</p>
+<h2 id="5-总结"><a href="#5-总结" class="headerlink" title="5. 总结"></a><b>5. 总结</b></h2><p>本文提供一个思路，算是抛砖引玉，同时也期待更加系统的工程实现。</p>
 
     </div>
 
@@ -140,7 +142,7 @@
     
   <div id="toc" class="toc-article">
     <strong class="toc-title">目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-如何下载"><span class="toc-text">1. 如何下载</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-如何使用"><span class="toc-text">2. 如何使用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-更新汇总"><span class="toc-text">3. 更新汇总</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-遇到问题"><span class="toc-text"> 4. 遇到问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-问题线索采集"><span class="toc-text">5. 问题线索采集</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-错误日志"><span class="toc-text"> 5.1 错误日志</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-执行的SQL操作"><span class="toc-text">5.2 执行的SQL操作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-相关博文"><span class="toc-text">6. 相关博文</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-问题"><span class="toc-text">1. 问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-内存数据同步"><span class="toc-text">2. 内存数据同步</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-演示demo"><span class="toc-text">3. 演示demo</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-代码实现"><span class="toc-text">4. 代码实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-总结"><span class="toc-text">5. 总结</span></a></li></ol>
   </div>
 
 
@@ -162,14 +164,19 @@
       <div class="post-nav-item post-nav-next">
         
           <span>〈 </span>
-          <a href="/2020/09/18/clickhouse-and-friends-compute-storage/" rel="next" title="ClickHouse和他的朋友们（14）存储计算分离方案与实现">
-          ClickHouse和他的朋友们（14）存储计算分离方案与实现
+          <a href="/2020/09/13/clickhouse-and-friends-replicated-merge-tree/" rel="next" title="ClickHouse和他的朋友们（13）ReplicatedMergeTree表引擎及同步机制">
+          ClickHouse和他的朋友们（13）ReplicatedMergeTree表引擎及同步机制
           </a>
         
       </div>
   
       <div class="post-nav-item post-nav-prev">
           
+          <a href="/3030/12/12/clickhouse-and-friends-mysql-replication-materializemysql/" rel="prev" title="【置顶】ClickHouse MaterializeMySQL实时同步MySQL汇总">
+            【置顶】ClickHouse MaterializeMySQL实时同步MySQL汇总
+          </a>
+          <span>〉</span>
+        
       </div>
     </div>
   
