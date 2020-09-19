@@ -99,13 +99,13 @@
 
 <p><b>最后更新: 2020-09-19</b></p>
 <h2 id="1-如何下载"><a href="#1-如何下载" class="headerlink" title="1. 如何下载"></a><b>1. 如何下载</b></h2><p>因为 MaterializeMySQL 还处于 experimental 阶段，根据社区反馈的问题、需求我们也在进行修复和开发，请大家尽量下载最新版进行体验:</p>
-<p>目前任何 master 分支的 build 都可以试用，比如选择 <a href="https://clickhouse-builds.s3.yandex.net/0/988b20a32c383034f43bea93fcf0609dd8c469ee/clickhouse_build_check/report.html" target="_blank" rel="noopener">20.10.1.4696</a> 下载安装。</p>
+<p>目前任何 master 分支的 build 都可以试用，比如选择 <a href="https://clickhouse-builds.s3.yandex.net/0/6e0bdaf46da2c939c45d360a442ce739db63ba94/clickhouse_build_check/report.html" target="_blank" rel="noopener">20.10.1.4699</a> 下载安装。</p>
 <h2 id="2-如何使用"><a href="#2-如何使用" class="headerlink" title="2. 如何使用"></a><b>2. 如何使用</b></h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CREATE DATABASE ckdb ENGINE &#x3D; MaterializeMySQL(&#39;[mysql-host]:[mysql-port]&#39;, &#39;[mysql-database]&#39;, &#39;[mysql-user]&#39;, &#39;[mysql-password]&#39;);</span><br></pre></td></tr></table></figure>
 
 
 
 <h2 id="3-更新汇总"><a href="#3-更新汇总" class="headerlink" title="3. 更新汇总"></a><b>3. 更新汇总</b></h2><ul>
-<li><input disabled="" type="checkbox"> 支持 decimal 类型 <a href="https://github.com/ClickHouse/ClickHouse/pull/14535" target="_blank" rel="noopener">PR#14535</a></li>
+<li><input checked="" disabled="" type="checkbox"> 支持 decimal 类型 <a href="https://github.com/ClickHouse/ClickHouse/pull/14535" target="_blank" rel="noopener">PR#14535</a></li>
 <li><input checked="" disabled="" type="checkbox"> 支持 DATETIME(x)  fractional seconds precision <a href="https://github.com/ClickHouse/ClickHouse/pull/13761" target="_blank" rel="noopener">PR#13761</a></li>
 <li><input disabled="" type="checkbox"> 支持 YEAR, TIME 类型 (TODO)</li>
 <li><input disabled="" type="checkbox"> 支持 DROP TABLE database.table, table_2, … 语法  (TODO)</li>
@@ -130,10 +130,10 @@
 </li>
 </ul>
 <h2 id="6-老版本问题"><a href="#6-老版本问题" class="headerlink" title="6. 老版本问题"></a><b>6. 老版本问题</b></h2><ul>
-<li><input checked="" disabled="" type="checkbox"> <a href="https://github.com/ClickHouse/ClickHouse/issues/14781" target="_blank" rel="noopener">MaterializeMySQL Data inconsistency between MySQL and Clickhouse</a> (已修复，请使用最新版，比如20.10.1.4696)</li>
-<li><input checked="" disabled="" type="checkbox"> <a href="https://github.com/ClickHouse/ClickHouse/issues/14786" target="_blank" rel="noopener">MaterializeMySQLSyncThread:  Attempt to read after eof</a> (已修复，请使用最新版，比如20.10.1.4696)</li>
-<li><input checked="" disabled="" type="checkbox"> <a href="https://github.com/ClickHouse/ClickHouse/issues/14251" target="_blank" rel="noopener">MaterializeMySQLSyncThread DB::Exception: Packet payload is not fully read</a>  (已修复，请使用最新版，比如20.10.1.4696)</li>
-<li><input checked="" disabled="" type="checkbox"> <a href="">Cannot open file /data/clickhouse/metadata/dmp_idm//.metadata.tmp, errno: 17, strerror: File exists</a> (已修复，请使用最新版，比如20.10.1.4696)</li>
+<li><input checked="" disabled="" type="checkbox"> <a href="https://github.com/ClickHouse/ClickHouse/issues/14781" target="_blank" rel="noopener">MaterializeMySQL Data inconsistency between MySQL and Clickhouse</a> (已修复，请使用master最版本)</li>
+<li><input checked="" disabled="" type="checkbox"> <a href="https://github.com/ClickHouse/ClickHouse/issues/14786" target="_blank" rel="noopener">MaterializeMySQLSyncThread:  Attempt to read after eof</a> (已修复，请使用master最版本)</li>
+<li><input checked="" disabled="" type="checkbox"> <a href="https://github.com/ClickHouse/ClickHouse/issues/14251" target="_blank" rel="noopener">MaterializeMySQLSyncThread DB::Exception: Packet payload is not fully read</a>  (已修复，请使用master最版本)</li>
+<li><input checked="" disabled="" type="checkbox"> <a href="">Cannot open file /data/clickhouse/metadata/dmp_idm//.metadata.tmp, errno: 17, strerror: File exists</a> (已修复，请使用master最版本)</li>
 </ul>
 <h2 id="7-相关博文"><a href="#7-相关博文" class="headerlink" title="7. 相关博文"></a><b>7. 相关博文</b></h2><p><a href="/2020/07/26/clickhouse-and-friends-mysql-replication/">ClickHouse和他的朋友们（9）MySQL实时复制与实现</a><br><a href="/2020/08/26/clickhouse-and-friends-mysql-gtid-replication/">ClickHouse和他的朋友们（11）MySQL实时复制之GTID模式</a></p>
 
