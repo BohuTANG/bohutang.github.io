@@ -97,7 +97,7 @@
     <div class="post-content">
       <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/clickhouse-map-2020-replicatedmergetree.png" align="center" style="zoom:50%;" />
 
-<p><b>最后更新: 2020-09-18</b></p>
+<p><b>最后更新: 2020-09-28</b></p>
 <p>如果多个 ClickHouse server 可以挂载同一份数据(分布式存储等)，并且每个 server 都可写，这样会有什么好处呢？</p>
 <p>首先，我们可以把副本机制交给分布式存储来保障，上层架构变得简单朴素；</p>
 <p>其次，clickhouse-server 可以在任意机器上增加、减少，使存储和计算能力得到充分发挥。</p>
@@ -134,6 +134,7 @@
 <h2 id="4-代码实现"><a href="#4-代码实现" class="headerlink" title="4. 代码实现"></a><b>4. 代码实现</b></h2><p><a href="https://github.com/BohuTANG/ClickHouse/commit/f67d98ef408fda1a359e4fb17848619ef1f6e59b" target="_blank" rel="noopener">原型</a><br>需要注意的是，这里只实现了写入数据同步，而且是非常 tricky 的方式。</p>
 <p>由于 DDL 没有实现，所以在 zookeeper 上的注册方式也比较 tricky，demo 里的 replicas 都是手工注册的。</p>
 <h2 id="5-总结"><a href="#5-总结" class="headerlink" title="5. 总结"></a><b>5. 总结</b></h2><p>本文提供一个思路，算是抛砖引玉，同时也期待更加系统的工程实现。</p>
+<p>ClickHouse 暂时还不支持 Distributed Query 功能，如果这个能力支持，ClickHouse 存储计算分离就是一个威力无比的小氢弹。</p>
 
     </div>
 
