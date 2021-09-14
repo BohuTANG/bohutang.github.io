@@ -11,15 +11,15 @@
   <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
   
   
-    <meta name="keywords" content="datafuse,cloud warehouse," />
+    <meta name="keywords" content="cloud warehouse,databend," />
   
 
   
-    <meta name="description" content="Rust, Datafuse and the Cloud Warehouse（2）Datafuse 架构概览" />
+    <meta name="description" content="Rust, Databend and the Cloud Warehouse（2）Databend 架构概览" />
   
   
   <link rel="icon" type="image/x-icon" href="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/favicon.ico">
-  <title>Rust, Datafuse and the Cloud Warehouse（2）Datafuse 架构概览 [ 虎哥的博客 ]</title>
+  <title>Rust, Databend and the Cloud Warehouse（2）Databend 架构概览 [ 虎哥的博客 ]</title>
   
     <!-- stylesheets list from config.yml -->
     
@@ -74,7 +74,7 @@
   <article class="post" id="post">
     <header class="post-header text-center">
       <h1 class="title">
-        Rust, Datafuse and the Cloud Warehouse（2）Datafuse 架构概览
+        Rust, Databend and the Cloud Warehouse（2）Databend 架构概览
       </h1>
       <span>
         
@@ -86,7 +86,7 @@
       <span class="slash">/</span>
       <span class="post-meta">
       <span class="post-tags">
-        <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cloud-warehouse/" rel="tag">cloud warehouse</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/datafuse/" rel="tag">datafuse</a></li></ul>
+        <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/cloud-warehouse/" rel="tag">cloud warehouse</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/databend/" rel="tag">databend</a></li></ul>
       </span>
     </span>
       <span class="read">
@@ -95,17 +95,17 @@
     </header>
 
     <div class="post-content">
-      <p>Datafuse 是一个开源的、完全面向云架构的新式数仓，它提供快速的弹性扩展能力，并结合云的弹性、简单性和低成本，使 Data Cloud 构建变得更加容易。Datafuse 把数据存储在像 AWS S3 ，Azure Blob 这些云上的存储系统，可以使不同的计算节点挂载同一份数据，从而做到较高的弹性，实现对资源的精细化控制。</p>
-<p>Datafuse 在设计上专注以下能力：</p>
+      <p>Databend 是一个开源的、完全面向云架构的新式数仓，它提供快速的弹性扩展能力，并结合云的弹性、简单性和低成本，使 Data Cloud 构建变得更加容易。Databend 把数据存储在像 AWS S3 ，Azure Blob 这些云上的存储系统，可以使不同的计算节点挂载同一份数据，从而做到较高的弹性，实现对资源的精细化控制。</p>
+<p>Databend 在设计上专注以下能力：</p>
 <ol>
-<li><strong>弹性</strong> 在 Datafuse 中，存储和计算资源可以按需、按量弹性扩展。</li>
-<li><strong>安全</strong> Datafuse 中数据文件和网络传输都是端到端加密，并在 SQL 级别提供基于角色的权限控制。</li>
-<li><strong>易用</strong> Datafuse 兼容 ANSI SQL，并可以使用 MySQL 和 ClickHouse 客户端接入，几乎无学习成本。</li>
-<li><strong>成本</strong> Datafuse 处理查询非常高效，用户只需要为使用的资源付费。</li>
+<li><strong>弹性</strong> 在 Databend 中，存储和计算资源可以按需、按量弹性扩展。</li>
+<li><strong>安全</strong> Databend 中数据文件和网络传输都是端到端加密，并在 SQL 级别提供基于角色的权限控制。</li>
+<li><strong>易用</strong> Databend 兼容 ANSI SQL，并可以使用 MySQL 和 ClickHouse 客户端接入，几乎无学习成本。</li>
+<li><strong>成本</strong> Databend 处理查询非常高效，用户只需要为使用的资源付费。</li>
 </ol>
 <img src="https://datafuse-1253727613.cos.ap-hongkong.myqcloud.com/arch/datafuse-arch-20210817.svg" align="center" />
 
-<p>上图是 Datafuse 的整体架构图，整个系统主要由三大部分组成：<code>Meta service Layer</code>、<code>Compute Layer</code> 和 <code>Storage Layer</code>。</p>
+<p>上图是 Databend 的整体架构图，整个系统主要由三大部分组成：<code>Meta service Layer</code>、<code>Compute Layer</code> 和 <code>Storage Layer</code>。</p>
 <h2 id="Meta-Service-Layer"><a href="#Meta-Service-Layer" class="headerlink" title="Meta Service Layer"></a><strong>Meta Service Layer</strong></h2><p>Meta Service 是一个多租户、高可用的分布式 key-value 存储服务，具备事务能力，主要用于存储：</p>
 <ul>
 <li><code>Metadata</code> : 表的元信息、索引信息、集群信息、事务信息等。</li>
@@ -130,12 +130,12 @@
 <li><strong>处理器 （Processors）</strong></li>
 </ul>
 <p>处理器（Processor）是执行计算逻辑的核心组件。根据执行计划，处理器们被编排成一个流水线（Pipeline），用于执行计算任务。</p>
-<p>整个 Pipeline 是一个有向无环图，每个点是一个处理器，每条边由处理器的 InPort 和 OutPort 相连构成，数据到达不同的处理器进行计算后，通过边流向下一个处理器，多个处理器可以并行计算，在集群模式下还可以跨节点分布式执行，这是 Datafuse 高性能的一个重要设计。</p>
+<p>整个 Pipeline 是一个有向无环图，每个点是一个处理器，每条边由处理器的 InPort 和 OutPort 相连构成，数据到达不同的处理器进行计算后，通过边流向下一个处理器，多个处理器可以并行计算，在集群模式下还可以跨节点分布式执行，这是 Databend 高性能的一个重要设计。</p>
 <p>例如，我们可以通过 EXPLAIN PIPELINE 来查看：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">datafuse :) EXPLAIN PIPELINE SELECT number + 1 FROM numbers_mt(10000) WHERE number &gt; 8 LIMIT 2</span><br><span class="line">┌─explain───────────────────────────────────────────────────────────────┐</span><br><span class="line">│ LimitTransform × 1 processor                                          │</span><br><span class="line">│   Merge (ProjectionTransform × 16 processors) to (LimitTransform × 1) │</span><br><span class="line">│     ProjectionTransform × 16 processors                               │</span><br><span class="line">│       ExpressionTransform × 16 processors                             │</span><br><span class="line">│         FilterTransform × 16 processors                               │</span><br><span class="line">│           SourceTransform × 16 processors                             │</span><br><span class="line">└───────────────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
 
 <p>同样，理解这个 Pipeline 我们自下而上来看：<br><code>SourceTransform</code>：读取数据文件，16 个物理 CPU 并行处理<br><code>FilterTransform</code>：对数据进行 (number &gt; 8) 表达式过滤，16 个物理 CPU 并行处理<br><code>ExpressionTransform</code>：对数据进行 (number + 1) 表达式执行，16 个物理 CPU 并行处理<br><code>ProjectionTransform</code>：对数据处理生成最终列<br><code>LimitTransform</code>：对数据进行 Limit 2 处理，Pipeline 进行折叠，由一个物理 CPU 来执行</p>
-<p>Datafuse 通过 Pipeline 并行模型，并结合向量计算最大限度的去压榨 CPU 资源，以加速计算。</p>
+<p>Databend 通过 Pipeline 并行模型，并结合向量计算最大限度的去压榨 CPU 资源，以加速计算。</p>
 <ul>
 <li><strong>缓存 (Cache)</strong></li>
 </ul>
@@ -145,15 +145,15 @@
 <li>LOAD_INDEX - 只加载索引。</li>
 <li>LOAD_ALL - 加载全部的数据和索引，对于较小的表可以采取这种模式。</li>
 </ul>
-<h2 id="Storage-Layer"><a href="#Storage-Layer" class="headerlink" title="Storage Layer"></a><strong>Storage Layer</strong></h2><p>Datafuse 使用 Parquet 列式存储格式来储存数据，为了加快查找（Partition Pruning），Datafuse 为每个 Parquet 提供了自己的索引（根据 Primary Key 生成）：</p>
+<h2 id="Storage-Layer"><a href="#Storage-Layer" class="headerlink" title="Storage Layer"></a><strong>Storage Layer</strong></h2><p>Databend 使用 Parquet 列式存储格式来储存数据，为了加快查找（Partition Pruning），Datafuse 为每个 Parquet 提供了自己的索引（根据 Primary Key 生成）：</p>
 <ul>
 <li>min_max.idx Parquet 文件 minimum 和 maximum 值</li>
 <li>sparse.idx 以 N 条记录为颗粒度的稀疏索引</li>
 </ul>
 <p>通过这些索引， 我们可以减少数据的交互，并使计算量大大减少。<br>假设有两个Parquet 文件：<code>f1</code>, <code>f2</code>。<br><code>f1</code> 的 <code>min_max.idx: [3, 5]</code> ；<code>f2</code> 的 <code>min_max.idx: [4, 6]</code> 。如果查询条件为：<code>where x &lt; 4</code> ， 我们只需要 <code>f1</code> 文件就可以，再根据 <code>sparse.idx</code> 索引定位到 <code>f1</code> 文件中的某个数据页。</p>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><strong>总结</strong></h2><p>Datafuse 是一个完全面向云架构而设计的新式数仓，它把传统数据库进行解耦，再根据需求组装出一个 Cloud Warehouse，以追求高弹性、低成本为宗旨。</p>
-<p>Datafuse 目前的聚合函数已经<a href="https://datafuse.rs/overview/performance/" target="_blank" rel="noopener">非常高效</a>，基于这些高效的聚合函数（尤其是 Group By），我们实现了模型函数 <a href="https://datafuse.rs/sqlstatement/aggregate-functions/aggregate-windowfunnel/" target="_blank" rel="noopener">windowFunnel</a>，用于漏洞模型的高效计算。</p>
-<p>Datafuse 正处于高速迭代期，欢迎关注我们: <a href="https://github.com/datafuselabs/datafuse/" target="_blank" rel="noopener">https://github.com/datafuselabs/datafuse/</a></p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><strong>总结</strong></h2><p>Databend 是一个完全面向云架构而设计的新式数仓，它把传统数据库进行解耦，再根据需求组装出一个 Cloud Warehouse，以追求高弹性、低成本为宗旨。</p>
+<p>Databend 目前的聚合函数已经<a href="https://datafuse.rs/overview/performance/" target="_blank" rel="noopener">非常高效</a>，基于这些高效的聚合函数（尤其是 Group By），我们实现了模型函数 <a href="https://datafuse.rs/sqlstatement/aggregate-functions/aggregate-windowfunnel/" target="_blank" rel="noopener">windowFunnel</a>，用于漏洞模型的高效计算。</p>
+<p>Databend 正处于高速迭代期，欢迎关注我们: <a href="https://github.com/datafuselabs/databend/" target="_blank" rel="noopener">https://github.com/datafuselabs/databend/</a></p>
 
     </div>
 
@@ -192,6 +192,11 @@
   
       <div class="post-nav-item post-nav-prev">
           
+          <a href="/2021/09/14/datafuse-cloud-warehouse-rename-databend/" rel="prev" title="Rust, Databend and the Cloud Warehouse（3）Datafuse 更名为 Databend">
+            Rust, Databend and the Cloud Warehouse（3）Datafuse 更名为 Databend
+          </a>
+          <span>〉</span>
+        
       </div>
     </div>
   
