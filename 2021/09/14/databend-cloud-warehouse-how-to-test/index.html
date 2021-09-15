@@ -114,7 +114,9 @@
 
 <p>目前 Databend 有 500+ 的单元测试，并对一些状态做了全局 Mock，让开发者更加容易的编写测试用例，以从代码层面确保函数执行都符合预期，尽早的发现和解决问题。</p>
 <p>Databend 的单元测试会在 Ubuntu 和 MacOS 两个系统上运行 （Databend 研发主要使用 Mac 和 Ubuntu 两个主力系统）。</p>
-<img src="https://zc922idbau.feishu.cn/space/api/box/stream/download/asynccode/?code=MDk5YTE4Y2M1YmE4NzI4NTZlNTU2ZjA4N2FjMGUyNTdfcTNBd01JZERlY240NkxKeFV5MFQ5RXJPcVJscHptUm5fVG9rZW46Ym94Y25TeGQwV244M2Y1SzRUdE1tZkFGUW5lXzE2MzE2MDQ5OTQ6MTYzMTYwODU5NF9WNA" alt="img" style="zoom:50%;" />
+<img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/blog-datafuse/test-unit.png" style="zoom:50%;"/>
+
+
 
 <h3 id="功能测试"><a href="#功能测试" class="headerlink" title="功能测试"></a><strong>功能测试</strong></h3><p>当单元测试通过后，并不一定保证功能是正确的，因为功能通常来说是由多个函数逻辑性的贯穿而成。</p>
 <p>功能测试又分为 Stateless 和 Stateful 两种模型，其中 Stateless 测试模型不需要加载数据集， Stateful 测试模型则需要加载预值的数据集，接下来我们着重看下 Stateless 测试模型。</p>
@@ -132,20 +134,20 @@
 
 <p>每次做功能测试的时候，Databend 会调用这个 x.sql 文件，然后把得到的结果集和 x.result 文件进行对比，如果有出入则报错并给出提示信息。</p>
 <p>由于 Databend 具备分布式的 MPP 能力，所以功能测试会在单机（Standalone）和 集群（Cluster）两种模式下进行回归测试，以确保 Patch 对功能没有影响。</p>
-<img src="https://zc922idbau.feishu.cn/space/api/box/stream/download/asynccode/?code=NzJlYjUzMTEzNDIwYjhlMGFiZTg0MDUxYzY4MWM1NmJfQldLMnpZZkNnNEVpVURIRFJIV2JqajdLNjZlWnUyenlfVG9rZW46Ym94Y245Qk9xOE9ERkVJYlhqTHM1Sjhza21iXzE2MzE2MDQ5OTQ6MTYzMTYwODU5NF9WNA" alt="img" style="zoom:50%;" />
+<img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/blog-datafuse/test-stateless.png" style="zoom:50%;"/>
 
 
 
 <h3 id="性能测试"><a href="#性能测试" class="headerlink" title="性能测试"></a><strong>性能测试</strong></h3><p>当单元测试和功能测试都通过后，我们还会关注一个重要的指标：这个 Patch 是否导致性能下降？或者是一个性能优化的 Patch 提升了多少性能？</p>
 <p>针对这个问题，Databend 使用数字来做量化，我们只需在 Pull Request 里回复: <code>/run-perf master</code> CI 会自动编译当前分支然后跑相应的性能测试，再跟 master 做对比并生成一份性能对比报告：</p>
-<img src="https://zc922idbau.feishu.cn/space/api/box/stream/download/asynccode/?code=ODllNTg3ZGEzNmE5YmEzYjA4N2NkOTdmMzEyOGZkY2Nfc3JRS0RXalRRcXBsVDAwOE1DMXhpc1g3MzUwSjVlZDZfVG9rZW46Ym94Y25OM3M1ZFNLRlpnbGw2alNxZkRvckdPXzE2MzE2MDQ5OTQ6MTYzMTYwODU5NF9WNA" alt="img" style="zoom:40%;" />
+<img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/blog-datafuse/test-perf-report.png" style="zoom:50%;"/>
 
 <p>这样，Review 人员就可以根据这个报告清晰的知道当前 Patch 对性能的影响，以确保每个 Patch 在性能上都是可控的。</p>
 <h3 id="编译测试"><a href="#编译测试" class="headerlink" title="编译测试"></a><strong>编译测试</strong></h3><p>Databend 目标是打造一个跨平台的 Cloud Warehouse，所以要求每个 Patch 在以下几个平台都可以正常编译和工作：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">- &#123;os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, cross: false&#125;</span><br><span class="line">- &#123;os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, cross: true&#125;</span><br><span class="line">- &#123;os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, cross: true&#125;</span><br><span class="line">- &#123;os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, cross: true&#125;</span><br><span class="line">- &#123;os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, cross: false&#125;</span><br></pre></td></tr></table></figure>
 
 <p>当这个 CI 跑完后，我们可以明确的知道当前 Patch 对跨版本编译是没有影响的。</p>
-<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a><strong>小结</strong></h3><img src="https://zc922idbau.feishu.cn/space/api/box/stream/download/asynccode/?code=OTMzNzhhZDMyYTc5MmJlNjVhYjhiM2JiZjQ5YzNlYjlfWUl3QzJFaTlZM2J0dWx2MzNDZHA0aGJhalhwenU5eEhfVG9rZW46Ym94Y25nd1cxM0dvMjBuZkZRRUF4c0NrYVdjXzE2MzE2NzAxODk6MTYzMTY3Mzc4OV9WNA" alt="img" style="zoom:40%;" />
+<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a><strong>小结</strong></h3><img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/blog-datafuse/test-all-passed.png" style="zoom:50%;"/>
 
 <p>以上所有的 CI 测试都通过后，我们的 Pull Request 才算合格，具备合并到主干分支的条件。</p>
 <p>如果没有这些自动化测试 CI 做保障，每个问题都会消耗 Review 人员大量的精力去做验证，这种模式肯定不可持久，严重影响产品的迭代速度，拖慢社区的节奏。</p>
