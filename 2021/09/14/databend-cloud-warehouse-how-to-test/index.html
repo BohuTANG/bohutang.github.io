@@ -145,7 +145,9 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">- &#123;os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, cross: false&#125;</span><br><span class="line">- &#123;os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, cross: true&#125;</span><br><span class="line">- &#123;os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, cross: true&#125;</span><br><span class="line">- &#123;os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, cross: true&#125;</span><br><span class="line">- &#123;os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, cross: false&#125;</span><br></pre></td></tr></table></figure>
 
 <p>当这个 CI 跑完后，我们可以明确的知道当前 Patch 对跨版本编译是没有影响的。</p>
-<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a><strong>小结</strong></h3><p>以上所有的测试都通过后，我们的 Pull Request 才算合格，具备合并到主干分支的条件。</p>
+<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a><strong>小结</strong></h3><img src="https://zc922idbau.feishu.cn/space/api/box/stream/download/asynccode/?code=OTMzNzhhZDMyYTc5MmJlNjVhYjhiM2JiZjQ5YzNlYjlfWUl3QzJFaTlZM2J0dWx2MzNDZHA0aGJhalhwenU5eEhfVG9rZW46Ym94Y25nd1cxM0dvMjBuZkZRRUF4c0NrYVdjXzE2MzE2NzAxODk6MTYzMTY3Mzc4OV9WNA" alt="img" style="zoom:40%;" />
+
+<p>以上所有的 CI 测试都通过后，我们的 Pull Request 才算合格，具备合并到主干分支的条件。</p>
 <p>如果没有这些自动化测试 CI 做保障，每个问题都会消耗 Review 人员大量的精力去做验证，这种模式肯定不可持久，严重影响产品的迭代速度，拖慢社区的节奏。</p>
 <p>Databend 从第一天开始就在努力打造一个可测试的系统，为此我们研发了 test-infra 以及社区协作的 fusebot 机器人，以加速 Databend 产品迭代，尽快提供一个可试用的 Alpha 版本。</p>
 <h3 id="References"><a href="#References" class="headerlink" title="References"></a><strong>References</strong></h3><ol>
