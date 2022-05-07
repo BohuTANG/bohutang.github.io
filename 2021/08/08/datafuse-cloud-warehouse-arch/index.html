@@ -15,11 +15,11 @@
   
 
   
-    <meta name="description" content="Rust, Databend and the Cloud Warehouse（1）云时代数仓架构设计" />
+    <meta name="description" content="Rust, Datafuse and the Cloud Warehouse（1）云时代数仓架构设计" />
   
   
   <link rel="icon" type="image/x-icon" href="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/favicon.ico">
-  <title>Rust, Databend and the Cloud Warehouse（1）云时代数仓架构设计 [ 虎哥的博客 ]</title>
+  <title>Rust, Datafuse and the Cloud Warehouse（1）云时代数仓架构设计 [ 虎哥的博客 ]</title>
   
     <!-- stylesheets list from config.yml -->
     
@@ -74,7 +74,7 @@
   <article class="post" id="post">
     <header class="post-header text-center">
       <h1 class="title">
-        Rust, Databend and the Cloud Warehouse（1）云时代数仓架构设计
+        Rust, Datafuse and the Cloud Warehouse（1）云时代数仓架构设计
       </h1>
       <span>
         
@@ -143,7 +143,7 @@
 
 
 <p>Snowflake 在计算和存储之间加了一个共享的 Ephemeral Storage，主要用于 Intermediate data 存储，同时肩负着 Persistent data cache，好处是缓存可以充分利用，缺点是这个 Distributed Emphemeral Storage 做到 Elastic 同样面临一些挑战，比如多租户情况下资源隔离等问题。</p>
-<h3 id="Databend-架构"><a href="#Databend-架构" class="headerlink" title="Databend 架构"></a>Databend 架构</h3><p>Cloud Warehouse 强调状态分离，我们可以把 Persistent data 预先生成足够多的索引放到 Metadata Service，每个计算节点进行订阅，根据需要更新本地的 Cache，这个架构跟 FireBolt 比较相似。</p>
+<h3 id="Datafuse-架构"><a href="#Datafuse-架构" class="headerlink" title="Datafuse 架构"></a>Datafuse 架构</h3><p>Cloud Warehouse 强调状态分离，我们可以把 Persistent data 预先生成足够多的索引放到 Metadata Service，每个计算节点进行订阅，根据需要更新本地的 Cache，这个架构跟 FireBolt 比较相似。</p>
 <p>这是目前比较简单可行的方式，增加计算节点，只要加热 Cache 即可，同样会面临一些挑战，比如海量的索引信息快速同步问题。</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/blog-datafuse/cloud-warehouse-cache-index.png" align="center" style="zoom:35%;" />
 
@@ -165,7 +165,7 @@
     
   <div id="toc" class="toc-article">
     <strong class="toc-title">目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Sharding-Warehouse"><span class="toc-text">Sharding Warehouse</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Cloud-Warehouse"><span class="toc-text">Cloud Warehouse</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#如何设计？"><span class="toc-text">如何设计？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Snowflake-架构"><span class="toc-text">Snowflake 架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Databend-架构"><span class="toc-text">Databend 架构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#References"><span class="toc-text">References</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Sharding-Warehouse"><span class="toc-text">Sharding Warehouse</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Cloud-Warehouse"><span class="toc-text">Cloud Warehouse</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#如何设计？"><span class="toc-text">如何设计？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Snowflake-架构"><span class="toc-text">Snowflake 架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Datafuse-架构"><span class="toc-text">Datafuse 架构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#References"><span class="toc-text">References</span></a></li></ol>
   </div>
 
 
