@@ -78,8 +78,8 @@
       </h1>
       <span>
         
-        <time class="time" datetime="2022-05-05T16:00:00.000Z">
-        2022-05-06
+        <time class="time" datetime="2022-05-06T16:00:00.000Z">
+        2022-05-07
       </time>
         
       </span>
@@ -183,7 +183,7 @@
 <ul>
 <li>Snapshot 文件，用于描述 Segment 对象信息</li>
 <li>Segment 文件，用于描述 Block 对象信息</li>
-<li>Block 文件，用于描述 parquet 文件信息</li>
+<li>Block 文件，用于描述 Parquet 文件信息</li>
 </ul>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/blog-datafuse/fuse-engine-fuse.png" align="center" style="zoom:45%;" />
 
@@ -213,24 +213,24 @@
 <li><p>Fuse Engine 为我们生成一个新的 Snapshot ID <code>efe2687fd1fc48f8b414b5df2cec1e19</code>，并指向前一个 Snapshot ID <code>6450690b09c449939a83268c49c12bb2</code></p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">CALL system$fuse_snapshot(&#39;default&#39;, &#39;git&#39;);</span><br><span class="line">*************************** 1. row ***************************</span><br><span class="line">         snapshot_id: efe2687fd1fc48f8b414b5df2cec1e19</span><br><span class="line">   snapshot_location: 53&#x2F;133&#x2F;_ss&#x2F;efe2687fd1fc48f8b414b5df2cec1e19_v1.json</span><br><span class="line">      format_version: 1</span><br><span class="line">previous_snapshot_id: 6450690b09c449939a83268c49c12bb2</span><br><span class="line">       segment_count: 2</span><br><span class="line">         block_count: 2</span><br><span class="line">           row_count: 2</span><br><span class="line">*************************** 2. row ***************************</span><br><span class="line">         snapshot_id: 6450690b09c449939a83268c49c12bb2</span><br><span class="line">   snapshot_location: 53&#x2F;133&#x2F;_ss&#x2F;6450690b09c449939a83268c49c12bb2_v1.json</span><br><span class="line">      format_version: 1</span><br><span class="line">previous_snapshot_id: NULL</span><br><span class="line">       segment_count: 1</span><br><span class="line">         block_count: 1</span><br><span class="line">           row_count: 1</span><br></pre></td></tr></table></figure>
 
-<p>目前为止，Fuse Engine为我们生成了2个版本的数据：</p>
+<p>目前为止，Fuse Engine 为我们生成了 2 个版本的数据：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ID efe2687fd1fc48f8b414b5df2cec1e19，版本2</span><br><span class="line">ID 6450690b09c449939a83268c49c12bb2，版本1</span><br></pre></td></tr></table></figure>
 
 <p>是不是跟 Git 非常类似？</p>
 </li>
 </ol>
-<h3 id="HEAD"><a href="#HEAD" class="headerlink" title="HEAD"></a><b>HEAD</b></h3><p>跟 Git 一样，Fuse Engine 也需要一个 HEAD 作为入口，查看 Fuse Engine的 HEAD：</p>
+<h3 id="HEAD"><a href="#HEAD" class="headerlink" title="HEAD"></a><b>HEAD</b></h3><p>跟 Git 一样，Fuse Engine 也需要一个 HEAD 作为入口，查看 Fuse Engine 的 HEAD：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">SHOW CREATE TABLE git\G;</span><br><span class="line">*************************** 1. row ***************************</span><br><span class="line">       Table: git</span><br><span class="line">Create Table: CREATE TABLE &#96;git&#96; (</span><br><span class="line">  &#96;file&#96; VARCHAR,</span><br><span class="line">  &#96;content&#96; VARCHAR</span><br><span class="line">) ENGINE&#x3D;FUSE SNAPSHOT_LOCATION&#x3D;&#39;53&#x2F;133&#x2F;_ss&#x2F;efe2687fd1fc48f8b414b5df2cec1e19_v1.json&#39;</span><br></pre></td></tr></table></figure>
 
-<p><code>SNAPSHOT_LOCATION</code> 就是 HEAD，默认指向最新的快照 <code>efe2687fd1fc48f8b414b5df2cec1e19</code>，那我们如何切到 ID 为 <code>6450690b09c449939a83268c49c12bb2</code> 的快照数据呢？ 很简单，先查看当前表的 snapshot 信息：</p>
+<p><code>SNAPSHOT_LOCATION</code> 就是 HEAD，默认指向最新的快照 <code>efe2687fd1fc48f8b414b5df2cec1e19</code>，那我们如何切到 ID 为 <code>6450690b09c449939a83268c49c12bb2</code> 的快照数据呢？ 很简单，先查看当前表的 Snapshot 信息：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">CALL system$fuse_snapshot(&#39;default&#39;, &#39;git&#39;)\G;</span><br><span class="line">*************************** 1. row ***************************</span><br><span class="line">         snapshot_id: efe2687fd1fc48f8b414b5df2cec1e19</span><br><span class="line">   snapshot_location: 53&#x2F;133&#x2F;_ss&#x2F;efe2687fd1fc48f8b414b5df2cec1e19_v1.json</span><br><span class="line">      format_version: 1</span><br><span class="line">previous_snapshot_id: 6450690b09c449939a83268c49c12bb2</span><br><span class="line">       segment_count: 2</span><br><span class="line">         block_count: 2</span><br><span class="line">           row_count: 2</span><br><span class="line">*************************** 2. row ***************************</span><br><span class="line">         snapshot_id: 6450690b09c449939a83268c49c12bb2</span><br><span class="line">   snapshot_location: 53&#x2F;133&#x2F;_ss&#x2F;6450690b09c449939a83268c49c12bb2_v1.json</span><br><span class="line">      format_version: 1</span><br><span class="line">previous_snapshot_id: NULL</span><br><span class="line">       segment_count: 1</span><br><span class="line">         block_count: 1</span><br><span class="line">           row_count: 1</span><br></pre></td></tr></table></figure>
 
-<p>然后创建一个新表（git_v1）并把 <code>SNAPSHOT_LOCATION</code> 指向相应的 snapshot 文件：</p>
+<p>然后创建一个新表（git_v1）并把 <code>SNAPSHOT_LOCATION</code> 指向相应的 Snapshot 文件：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE git_v1(&#96;file&#96; VARCHAR, &#96;content&#96; VARCHAR) SNAPSHOT_LOCATION&#x3D;&#39;53&#x2F;133&#x2F;_ss&#x2F;6450690b09c449939a83268c49c12bb2_v1.json&#39;;</span><br><span class="line"></span><br><span class="line">SELECT * FROM git_v1;</span><br><span class="line">+-----------+-----------------------------+</span><br><span class="line">| file      | content                     |</span><br><span class="line">+-----------+-----------------------------+</span><br><span class="line">| cloud.txt | 2022&#x2F;05&#x2F;06, Databend, Cloud |</span><br><span class="line">+-----------+-----------------------------+</span><br></pre></td></tr></table></figure>
 
 
 
-<h3 id="Snapshot-文件"><a href="#Snapshot-文件" class="headerlink" title="Snapshot 文件"></a><b>Snapshot 文件</b></h3><p>用于存储 segment 信息，文件路径 ：</p>
+<h3 id="Snapshot-文件"><a href="#Snapshot-文件" class="headerlink" title="Snapshot 文件"></a><b>Snapshot 文件</b></h3><p>用于存储 Segment 信息，文件路径 ：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">53&#x2F;133&#x2F;_ss&#x2F;efe2687fd1fc48f8b414b5df2cec1e19_v1.json</span><br></pre></td></tr></table></figure>
 
 
@@ -240,7 +240,7 @@
 
 
 
-<h3 id="Segment-文件"><a href="#Segment-文件" class="headerlink" title="Segment 文件"></a><b>Segment 文件</b></h3><p>用于存储 block 相关信息，文件路径：</p>
+<h3 id="Segment-文件"><a href="#Segment-文件" class="headerlink" title="Segment 文件"></a><b>Segment 文件</b></h3><p>用于存储 Block 相关信息，文件路径：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">53&#x2F;133&#x2F;_sg&#x2F;df56e911eb26446b9f8fac5acc65a580_v1.json</span><br></pre></td></tr></table></figure>
 
 <p>文件内容：</p>
