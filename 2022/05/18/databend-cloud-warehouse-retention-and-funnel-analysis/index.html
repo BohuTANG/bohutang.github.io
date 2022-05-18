@@ -1,0 +1,378 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#202020"/>
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+  
+  
+    <meta name="keywords" content="databend,user retention,window funnel,funnel conversion," />
+  
+
+  
+    <meta name="description" content="Rust, Databend and the Cloud Warehouse（6) 如何简单、高效的进行留存和漏斗分析" />
+  
+  
+  <link rel="icon" type="image/x-icon" href="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/favicon.ico">
+  <title>Rust, Databend and the Cloud Warehouse（6) 如何简单、高效的进行留存和漏斗分析 [ 虎哥的博客 ]</title>
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="//cdn.bootcss.com/pure/1.0.0/pure-min.css">
+    
+      <link rel="stylesheet" href="/css/xoxo.css">
+    
+  
+<meta name="generator" content="Hexo 4.2.1"><link rel="alternate" href="/atom.xml" title="虎哥的博客" type="application/atom+xml">
+</head>
+
+
+<body>
+  <div class="nav-container">
+    <nav class="home-menu pure-menu pure-menu-horizontal">
+  <a class="pure-menu-heading" href="/">
+    <img class="avatar" src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/logo.png">
+    <span class="title">虎哥的博客</span>
+  </a>
+
+  <ul class="pure-menu-list clearfix">
+      
+          
+            <li class="pure-menu-item"><a href="/" class="pure-menu-link">首页</a></li>
+          
+      
+          
+            <li class="pure-menu-item"><a href="/archives" class="pure-menu-link">归档</a></li>
+          
+      
+          
+            <li class="pure-menu-item"><a href="/tags" class="pure-menu-link">标签</a></li>
+          
+      
+          
+            <li class="pure-menu-item"><a href="/about" class="pure-menu-link">关于</a></li>
+          
+      
+          
+            <li class="pure-menu-item"><a href="/atom.xml" class="pure-menu-link">订阅</a></li>
+          
+      
+  </ul>
+   
+</nav>
+
+  </div>
+
+  <div class="container" id="content-outer">
+    <div class="inner" id="content-inner">
+      <div class="post-container">
+  <article class="post" id="post">
+    <header class="post-header text-center">
+      <h1 class="title">
+        Rust, Databend and the Cloud Warehouse（6) 如何简单、高效的进行留存和漏斗分析
+      </h1>
+      <span>
+        
+        <time class="time" datetime="2022-05-17T16:00:00.000Z">
+        2022-05-18
+      </time>
+        
+      </span>
+      <span class="slash">/</span>
+      <span class="post-meta">
+      <span class="post-tags">
+        <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/databend/" rel="tag">databend</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/funnel-conversion/" rel="tag">funnel conversion</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/user-retention/" rel="tag">user retention</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/window-funnel/" rel="tag">window funnel</a></li></ul>
+      </span>
+    </span>
+      <span class="read">
+      <span id="busuanzi_value_page_pv"></span> 点击
+    </span>
+    </header>
+
+    <div class="post-content">
+      <blockquote>
+<p>Databend 是一个使用 Rust 研发、开源的、完全面向云架构的新式数仓，致力于提供极速的弹性扩展能力，打造按需、按量的 Data Cloud 产品体验。<br>开源地址：<a href="https://github.com/datafuselabs/databend" target="_blank" rel="noopener">https://github.com/datafuselabs/databend</a></p>
+</blockquote>
+<img src="https://datafuse-1253727613.cos.ap-hongkong.myqcloud.com/learn/databend-funnel.png" align="center" style="zoom:40%;" />
+
+
+
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a><b>前言</b></h2><p>随着移动互联网的发展，我们时刻都在生产着数据。</p>
+<p>如果你做了一款 APP，3 月份新增用户 1000 人，你是不是想了解在未来的某些时间段内，这部分用户里有多少人持续使用了你的 APP？</p>
+<p>如果你在经营一个电商，你可能更加关注用户在<code>登录</code>，<code>访问（某个商品）</code>，<code>下单</code>，<code>付款</code>流程里每个环节的转化率，了解用户行为轨迹变化，以精准优化产品设计。比如，如果 Andorid 用户在 <code>下单</code> 到 <code>付款</code>这个环节转化率明显低于其他客户端，说明 Andorid 客户端在 <code>付款</code> 这个环节上存在一些问题。</p>
+<p>这就是我们经常说的用户留存和漏斗转化率分析。</p>
+<p>大部分数仓要满足这两个需求，基本都要写一堆 SQL 来进行复杂表达，且性能低下，因为这两个分析会重度依赖 GROUP BY，百万级数据可能就会在分钟级。</p>
+<p>本篇就来聊聊 Databend 如何做到<strong>简洁</strong>、<strong>高效</strong>的满足这两个需求，使用一个简单的 SQL， 在<strong>千万级</strong>的数据集上也可以轻松搞定。</p>
+<h2 id="留存分析"><a href="#留存分析" class="headerlink" title="留存分析"></a><b>留存分析</b></h2><h3 id="数据表"><a href="#数据表" class="headerlink" title="数据表"></a><b>数据表</b></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE events(&#96;user_id&#96; INT, &#96;visit_date&#96; DATE);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>user_id</code>  - 用户 ID</li>
+<li><code>visit_date</code> - 用户访问日期 </li>
+</ul>
+<h3 id="构造数据集"><a href="#构造数据集" class="headerlink" title="构造数据集"></a><b>构造数据集</b></h3><p>构造用户访问记录。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># user_id 从 0 到 10000000 在 2022-05-15 访问数据</span><br><span class="line">INSERT INTO events SELECT number AS user_id, &#39;2022-05-15&#39; FROM numbers(10000000);</span><br><span class="line"></span><br><span class="line"># user_id 从 0 到 5000000 在 2022-05-16 访问数据</span><br><span class="line">INSERT INTO events SELECT number AS user_id, &#39;2022-05-16&#39; FROM numbers(5000000);</span><br><span class="line"></span><br><span class="line"># user_id 从 0 到 100000 在 2022-05-17 访问数据</span><br><span class="line">INSERT INTO events SELECT number As user_id, &#39;2022-05-17&#39; FROM numbers(100000);</span><br></pre></td></tr></table></figure>
+
+<h3 id="留存分析-1"><a href="#留存分析-1" class="headerlink" title="留存分析"></a><b>留存分析</b></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">SELECT</span><br><span class="line">    sum(r[0]) AS r1,</span><br><span class="line">    sum(r[1]) AS r2,</span><br><span class="line">    sum(r[2]) AS r3</span><br><span class="line">FROM</span><br><span class="line">(</span><br><span class="line">    SELECT</span><br><span class="line">        user_id,</span><br><span class="line">        retention(login_date &#x3D; &#39;2022-05-15&#39;, login_date &#x3D; &#39;2022-05-16&#39;, login_date &#x3D; &#39;2022-05-17&#39;) AS r</span><br><span class="line">    FROM events</span><br><span class="line">    GROUP BY user_id</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p>这里使用 <a href="https://databend.rs/doc/reference/functions/aggregate-functions/aggregate-retention" target="_blank" rel="noopener">Databend retention</a> 函数轻松搞定：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">+----------+---------+--------+</span><br><span class="line">| r1       | r2      | r3     |</span><br><span class="line">+----------+---------+--------+</span><br><span class="line">| 10000000 | 5000000 | 100000 |</span><br><span class="line">+----------+---------+--------+</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>2022-05-15</code> 有 <code>10000000</code> 人访问</li>
+<li><code>2022-05-16</code> 有 <code>5000000</code> 个用户持续访问，用户留存率 <code>5000000/10000000</code> = <code>50%</code></li>
+<li><code>2022-05-17</code> 有<code>100000</code>个用户持续访问，用户留存率 <code>100000/10000000</code> = <code>10%</code></li>
+</ul>
+<h2 id="漏斗分析"><a href="#漏斗分析" class="headerlink" title="漏斗分析"></a><b>漏斗分析</b></h2><h3 id="数据表-1"><a href="#数据表-1" class="headerlink" title="数据表"></a><b>数据表</b></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE events(user_id BIGINT, event_name VARCHAR, event_timestamp TIMESTAMP);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>user_id</code>  - 用户 ID</li>
+<li><code>event_name</code> - 事件类型：<code>登录</code>， <code>访问</code> ，<code>下单</code> ，<code>付款</code></li>
+<li><code>event_timestamp</code> - 事件时间（<a href="https://databend.rs/doc/reference/data-types/data-type-time-date-types" target="_blank" rel="noopener">Databend TIMESTAMP</a> 类型精度是小数点后 6 位， 微秒（microsecond）） </li>
+</ul>
+<h3 id="构造数据集-1"><a href="#构造数据集-1" class="headerlink" title="构造数据集"></a><b>构造数据集</b></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"># 用户 100123 事件</span><br><span class="line">INSERT INTO events VALUES(100123, &#39;登录&#39;, &#39;2022-05-14 10:01:00&#39;);</span><br><span class="line">INSERT INTO events VALUES(100123, &#39;访问&#39;, &#39;2022-05-14 10:02:00&#39;);</span><br><span class="line">INSERT INTO events VALUES(100123, &#39;下单&#39;, &#39;2022-05-14 10:04:00&#39;);</span><br><span class="line">INSERT INTO events VALUES(100123, &#39;付款&#39;, &#39;2022-05-14 10:10:00&#39;);</span><br><span class="line"></span><br><span class="line"># 用户 100125 事件</span><br><span class="line">INSERT INTO events VALUES(100125, &#39;登录&#39;, &#39;2022-05-15 11:00:00&#39;);</span><br><span class="line">INSERT INTO events VALUES(100125, &#39;访问&#39;, &#39;2022-05-15 11:01:00&#39;);</span><br><span class="line">INSERT INTO events VALUES(100125, &#39;下单&#39;, &#39;2022-05-15 11:02:00&#39;);</span><br><span class="line"></span><br><span class="line"># 用户 100126 事件</span><br><span class="line">INSERT INTO events VALUES(100126, &#39;登录&#39;, &#39;2022-05-15 12:00:00&#39;);</span><br><span class="line">INSERT INTO events VALUES(100126, &#39;访问&#39;, &#39;2022-05-15 12:01:00&#39;);</span><br><span class="line"></span><br><span class="line"># 用户 100127 事件</span><br><span class="line">INSERT INTO events VALUES(100127, &#39;登录&#39;, &#39;2022-05-15 11:30:00&#39;);</span><br><span class="line">INSERT INTO events VALUES(100127, &#39;访问&#39;, &#39;2022-05-15 11:31:00&#39;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="漏斗分析-1"><a href="#漏斗分析-1" class="headerlink" title="漏斗分析"></a><b>漏斗分析</b></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">SELECT</span><br><span class="line">    level,</span><br><span class="line">    count() AS count</span><br><span class="line">FROM</span><br><span class="line">(</span><br><span class="line">    SELECT</span><br><span class="line">        user_id,</span><br><span class="line">        window_funnel(3600000000)(event_timestamp, event_name &#x3D; &#39;登录&#39;, event_name &#x3D; &#39;访问&#39;, event_name &#x3D; &#39;下单&#39;, event_name &#x3D; &#39;付款&#39;) AS level</span><br><span class="line">    FROM events</span><br><span class="line">    GROUP BY user_id</span><br><span class="line">)</span><br><span class="line">GROUP BY level ORDER BY level ASC;</span><br></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">+-------+-------+</span><br><span class="line">| level | count |</span><br><span class="line">+-------+-------+</span><br><span class="line">|     2 |     2 |</span><br><span class="line">|     3 |     1 |</span><br><span class="line">|     4 |     1 |</span><br><span class="line">+-------+-------+</span><br></pre></td></tr></table></figure>
+
+<p>这里使用 <a href="https://databend.rs/doc/reference/functions/aggregate-functions/aggregate-windowfunnel" target="_blank" rel="noopener">Databend window_funnel</a> 函数对用户在 1 小时窗口内，进行事件链下钻分析。</p>
+<p>一小时内：有多少用户登录（level-1) –&gt; 有多少用户访问（level-2） –&gt; 有多少用户下单（level-3） –&gt; 有多少用户付款（level-4）</p>
+<p>从结果来看：</p>
+<ul>
+<li><p><code>登录 --&gt; 访问</code> 这条事件链上总共有 2 个用户，<code>100126</code> 和 <code>100127</code></p>
+</li>
+<li><p><code>登录 --&gt; 访问 --&gt; 下单</code> 这条事件链上有 1 位用户，<code>100125</code></p>
+</li>
+<li><p><code>登录 --&gt; 访问 --&gt; 下单 --&gt; 购买</code> 这条事件链上总共有 1 位用户，<code>100123</code></p>
+</li>
+</ul>
+<p>这样我们就可以轻松计算出每个阶段的转化率。</p>
+<h2 id="性能"><a href="#性能" class="headerlink" title="性能"></a><b>性能</b></h2><p>从上面示例可以看出，留存和漏斗分析都重度依赖  <code>GROUP BY user_id</code>，如果 <code>user_id</code> 较多，对 <code>GROUP BY</code>  计算速度有比较高的要求，Databend 在 <code>GROUP BY</code>上做了大量的优化，目前性能已经非常强悍，具体机制可以参考这篇文章 <a href="https://mp.weixin.qq.com/s?__biz=Mzg4NzYzMzk1Mw==&mid=2247484933&idx=1&sn=f6fa2d04e5864602e00b0be4ef163e99" target="_blank" rel="noopener">Databend 的 Group By 聚合查询为什么跑的这么快？</a></p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p>Databend 留存（RETENTION）函数和漏斗分析（WINDOW_FUNNEL）函数去年已经实现，把复杂的逻辑进行封装，让用户使用起来更加方便。</p>
+<p>Databend 作为一个新一代云数仓，在设计上做了一个很大的转变：<strong>数据不再是重心，用户的体验才是</strong>。</p>
+<p>对于一个数仓产品，相信大部分用户都希望：</p>
+<ul>
+<li>不再为存储空间发愁</li>
+<li>不再为计算资源发愁</li>
+<li>开箱即用，真正的按需、按量付费</li>
+</ul>
+<p>随着云基础设施的发展，我们在 Databend Platform 里让这一切都变成了可能。</p>
+<p>基于开源 <a href="https://github.com/datafuselabs/databend" target="_blank" rel="noopener">Databend</a> 内核、AWS EC2 计算资源、S3 的对象存储，加上自研的 Serverless Infrastructure，Databend 团队即将推出他们的第一个企业级产品：Databend Platform。</p>
+<p>来，让我们一起看看在 Databend Platform 里如何做漏斗分析：</p>
+<ol>
+<li>选择 Worksheet</li>
+<li>选择休眠的 Warehouse</li>
+<li>执行漏斗分析 SQL，自动唤醒 Warehouse</li>
+<li>Warehouse 自动休眠</li>
+<li>就是这么简单</li>
+</ol>
+<img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/blog-window-funnel.gif" align="center" style="zoom:45%;" />
+
+    </div>
+
+  </article>
+  <div class="toc-container">
+    
+  <div id="toc" class="toc-article">
+    <strong class="toc-title">目录</strong>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#留存分析"><span class="toc-text">留存分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#数据表"><span class="toc-text">数据表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造数据集"><span class="toc-text">构造数据集</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#留存分析-1"><span class="toc-text">留存分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#漏斗分析"><span class="toc-text">漏斗分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#数据表-1"><span class="toc-text">数据表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造数据集-1"><span class="toc-text">构造数据集</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#漏斗分析-1"><span class="toc-text">漏斗分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#性能"><span class="toc-text">性能</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
+  </div>
+
+
+  </div>
+</div>
+<div class="copyright">
+    <span>本作品采用</span>
+    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">知识共享署名 4.0 国际许可协议</a>
+    <span>进行许可。 转载时请注明原文链接。</span>
+</div>
+<div class="share" style="width: 100%;">
+
+<div class="share" style="width: 100%;">
+</div>
+</div>
+
+  
+    <div class="post-nav">
+      <div class="post-nav-item post-nav-next">
+        
+          <span>〈 </span>
+          <a href="/2022/05/08/ecdsa-rsa/" rel="next" title="使用 ECDSA 替换 RSA 生成 SSH Key">
+          使用 ECDSA 替换 RSA 生成 SSH Key
+          </a>
+        
+      </div>
+  
+      <div class="post-nav-item post-nav-prev">
+          
+      </div>
+    </div>
+  
+
+    </div>
+
+    
+
+  </div>
+  <footer class="footer text-center">
+    <div id="bottom-inner">
+        <a class="bottom-item" href="https://bohutang.me">首页</a> |
+        <a class="bottom-item" href="https://hexo.io" target="_blank">Powered by hexo</a> |
+        <a class="bottom-item" href="https://github.com/KevinOfNeu/hexo-theme-xoxo" target="_blank">Theme xoxo</a>
+    </div>
+</footer>
+
+  
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="//cdn.bootcss.com/zepto/1.2.0/zepto.min.js"></script>
+  
+
+
+<script>
+  (function(window, document, undefined) {
+
+    var timer = null;
+
+    function returnTop() {
+      cancelAnimationFrame(timer);
+      timer = requestAnimationFrame(function fn() {
+        var oTop = document.body.scrollTop || document.documentElement.scrollTop;
+        if (oTop > 0) {
+          document.body.scrollTop = document.documentElement.scrollTop = oTop - 50;
+          timer = requestAnimationFrame(fn);
+        } else {
+          cancelAnimationFrame(timer);
+        }
+      });
+    }
+
+    var hearts = [];
+    window.requestAnimationFrame = (function() {
+      return window.requestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.oRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        function(callback) {
+          setTimeout(callback, 1000 / 60);
+        }
+    })();
+    init();
+
+    function init() {
+      css(".heart{z-index:9999;width: 10px;height: 10px;position: fixed;background: #f00;transform: rotate(45deg);-webkit-transform: rotate(45deg);-moz-transform: rotate(45deg);}.heart:after,.heart:before{content: '';width: inherit;height: inherit;background: inherit;border-radius: 50%;-webkit-border-radius: 50%;-moz-border-radius: 50%;position: absolute;}.heart:after{top: -5px;}.heart:before{left: -5px;}");
+      attachEvent();
+      gameloop();
+      addMenuEvent();
+    }
+
+    function gameloop() {
+      for (var i = 0; i < hearts.length; i++) {
+        if (hearts[i].alpha <= 0) {
+          document.body.removeChild(hearts[i].el);
+          hearts.splice(i, 1);
+          continue;
+        }
+        hearts[i].y--;
+        hearts[i].scale += 0.004;
+        hearts[i].alpha -= 0.013;
+        hearts[i].el.style.cssText = "left:" + hearts[i].x + "px;top:" + hearts[i].y + "px;opacity:" + hearts[i].alpha + ";transform:scale(" + hearts[i].scale + "," + hearts[i].scale + ") rotate(45deg);background:" + hearts[i].color;
+      }
+      requestAnimationFrame(gameloop);
+    }
+
+    /**
+     * 给logo设置点击事件
+     * 
+     * - 回到顶部
+     * - 出现爱心
+     */
+    function attachEvent() {
+      var old = typeof window.onclick === "function" && window.onclick;
+      var logo = document.getElementById("logo");
+      if (logo) {
+        logo.onclick = function(event) {
+          returnTop();
+          old && old();
+          createHeart(event);
+        }
+      }
+      
+    }
+
+    function createHeart(event) {
+      var d = document.createElement("div");
+      d.className = "heart";
+      hearts.push({
+        el: d,
+        x: event.clientX - 5,
+        y: event.clientY - 5,
+        scale: 1,
+        alpha: 1,
+        color: randomColor()
+      });
+      document.body.appendChild(d);
+    }
+
+    function css(css) {
+      var style = document.createElement("style");
+      style.type = "text/css";
+      try {
+        style.appendChild(document.createTextNode(css));
+      } catch (ex) {
+        style.styleSheet.cssText = css;
+      }
+      document.getElementsByTagName('head')[0].appendChild(style);
+    }
+
+    function randomColor() {
+      // return "rgb(" + (~~(Math.random() * 255)) + "," + (~~(Math.random() * 255)) + "," + (~~(Math.random() * 255)) + ")";
+      return "#F44336";
+    }
+
+    function addMenuEvent() {
+      var menu = document.getElementById('menu-main-post');
+      if (menu) {
+        var toc = document.getElementById('toc');
+        if (toc) {
+          menu.onclick = function() {
+            if (toc) {
+              if (toc.style.display == 'block') {
+                toc.style.display = 'none';
+              } else {
+                toc.style.display = 'block';
+              }
+            }
+          };
+        } else {
+          menu.style.display = 'none';
+        }
+      }
+    }
+
+  })(window, document);
+</script>
+
+  
+
+
+  <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+                  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-175795005-1', 'auto');
+      ga('send', 'pageview');
+  </script>
+
+
+</body>
+</html>
