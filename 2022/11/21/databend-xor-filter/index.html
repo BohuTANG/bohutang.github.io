@@ -1,0 +1,351 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#202020"/>
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
+  
+  
+    <meta name="keywords" content="Databend,xor filter,bloom filter," />
+  
+
+  
+    <meta name="description" content="Rust, Databend and the Cloud Warehouse（7) 使用 Xor Filter 替换 Bloom Filter 加速查询" />
+  
+  
+  <link rel="icon" type="image/x-icon" href="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/favicon.ico">
+  <title>Rust, Databend and the Cloud Warehouse（7) 使用 Xor Filter 替换 Bloom Filter 加速查询 [ 虎哥的博客 ]</title>
+  
+    <!-- stylesheets list from config.yml -->
+    
+      <link rel="stylesheet" href="//cdn.bootcss.com/pure/1.0.0/pure-min.css">
+    
+      <link rel="stylesheet" href="/css/xoxo.css">
+    
+  
+<meta name="generator" content="Hexo 6.2.0"><link rel="alternate" href="/atom.xml" title="虎哥的博客" type="application/atom+xml">
+</head>
+
+
+<body>
+  <div class="nav-container">
+    <nav class="home-menu pure-menu pure-menu-horizontal">
+  <a class="pure-menu-heading" href="/">
+    <img class="avatar" src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/logo.png">
+    <span class="title">虎哥的博客</span>
+  </a>
+
+  <ul class="pure-menu-list clearfix">
+      
+          
+            <li class="pure-menu-item"><a href="/" class="pure-menu-link">首页</a></li>
+          
+      
+          
+            <li class="pure-menu-item"><a href="/archives" class="pure-menu-link">归档</a></li>
+          
+      
+          
+            <li class="pure-menu-item"><a href="/tags" class="pure-menu-link">标签</a></li>
+          
+      
+          
+            <li class="pure-menu-item"><a href="/about" class="pure-menu-link">关于</a></li>
+          
+      
+          
+            <li class="pure-menu-item"><a href="/atom.xml" class="pure-menu-link">订阅</a></li>
+          
+      
+  </ul>
+   
+</nav>
+
+  </div>
+
+  <div class="container" id="content-outer">
+    <div class="inner" id="content-inner">
+      <div class="post-container">
+  <article class="post" id="post">
+    <header class="post-header text-center">
+      <h1 class="title">
+        Rust, Databend and the Cloud Warehouse（7) 使用 Xor Filter 替换 Bloom Filter 加速查询
+      </h1>
+      <span>
+        
+        <time class="time" datetime="2022-11-20T16:00:00.000Z">
+        2022-11-21
+      </time>
+        
+      </span>
+      <span class="slash">/</span>
+      <span class="post-meta">
+      <span class="post-tags">
+        <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Databend/" rel="tag">Databend</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/bloom-filter/" rel="tag">bloom filter</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/xor-filter/" rel="tag">xor filter</a></li></ul>
+      </span>
+    </span>
+      <span class="read">
+      <span id="busuanzi_value_page_pv"></span> 点击
+    </span>
+    </header>
+
+    <div class="post-content">
+      <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在大数据分析领域，很多优化都是围绕一句话来做：”reduce distance to the data.“</p>
+<p>Bloom Filter Index 的作用是访问 Storage 之前使用布隆索引做下探测，然后决定是否需要从后端读取真正的数据块。</p>
+<img src="https://databend-1253727613.cos.ap-singapore.myqcloud.com/blog/xor-filter/bloom-filter.png" align="center" style="zoom:45%;" />
+
+<h2 id="有问题的-Bloom-Filter"><a href="#有问题的-Bloom-Filter" class="headerlink" title="有问题的 Bloom Filter"></a>有问题的 Bloom Filter</h2><p>大家所熟悉的数据库，大部分都在使用 Bloom Filter 解决等值查询的问题，避免做一些无用的数据读取。</p>
+<p>Databend 第一版( <a target="_blank" rel="noopener" href="https://github.com/datafuselabs/databend/pull/6639">databend#6639</a>) 使用的也是 Bloom Filter 经典算法，经过测试发现了一些问题：<br>Bloom Filter Index 的索引空间占用过大，Bloom Filter Index 大小甚至超过了原始数据大小（为了让用户简单易用，Databend 会自动为某些数据类型创建 Bloom 索引），这样做 Bloom 检测跟直接读取后端数据区别不大，所以并没有太大的性能提升。</p>
+<p>原因是 Bloom Filter 生成时并不知道数据的基数，比如 Boolean 类型，它也会根据数目分配空间，并不会关注基数问题（基数为 2，True or False）。</p>
+<p>于是 Databend  社区开始了新方案的探索之路，初步确定一个可行方案是通过 HyperLoglog 检测出数据唯一度，然后做空间分配。</p>
+<p>9 月份某个周六的 TiDB 用户大会上，Databend 有个展台，跟 xp(@drmingdrmer) 见面（Databend 团队是 Remote 办公，大家线下见面不太容易 😭）重新讨论起这个问题，他想用 Trie 思想来解决，思路挺好，但复杂度较高。</p>
+<p>xp 是 Trie 领域的高手，工程实现来对他来说不是问题，但隐约感觉一些现有技术可以很好的解决这个问题。</p>
+<img src="https://databend-1253727613.cos.ap-singapore.myqcloud.com/blog/xor-filter/tidb-databend.png" align="center" style="zoom:60%;" />
+
+
+
+<h2 id="高性价比的-Xor-Filter"><a href="#高性价比的-Xor-Filter" class="headerlink" title="高性价比的 Xor Filter"></a>高性价比的 Xor Filter</h2><p>周日进行了一番探索，发现了 Daniel Lemire 团队在 2019 年提出的 Xor Filter 算法: <a target="_blank" rel="noopener" href="https://lemire.me/blog/2019/12/19/xor-filters-faster-and-smaller-than-bloom-filters/">Xor Filters: Faster and Smaller Than Bloom Filters</a>，从介绍看效果非常不错。</p>
+<img src="https://lemire.me/blog/wp-content/uploads/2019/12/comparison.png" style="zoom:45%;" />
+
+<p>抱着试试看的心理，基于 Rust 版（<a target="_blank" rel="noopener" href="https://github.com/prataprc/xorfilter">xorfilter</a>）做了一个测试 （<a target="_blank" rel="noopener" href="https://github.com/BohuTANG/databend/commit/b45793c044c17cc6f8706c42bbe21201590f359f">Xor Filter Bench</a>，发现疗效非常不错：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">u64: </span><br><span class="line">xor bitmap encode:1230069 bytes, raw:8000000 bytes, ratio:0.15375863</span><br><span class="line"></span><br><span class="line">bool:</span><br><span class="line">xor bitmap encode:61 bytes, raw:1000000 bytes, ratio:0.000061</span><br><span class="line"></span><br><span class="line">string:</span><br><span class="line">xor bitmap encode:123067 bytes, raw:3000000 bytes, ratio:0.041022334</span><br><span class="line"></span><br><span class="line">100000 records of the same key:</span><br><span class="line">xor bitmap encode: 61 bytes, raw:3000000 bytes, ratio:0.000020333333</span><br></pre></td></tr></table></figure>
+
+
+
+<p>于是，在 <a target="_blank" rel="noopener" href="https://github.com/datafuselabs/databend/pull/7860">databend#7860</a> 实现了 Bloom Filter 到 Xor Filter 的切换，让我们做一些测试来看看效果。</p>
+<h3 id="测试环境"><a href="#测试环境" class="headerlink" title="测试环境"></a>测试环境</h3><p>Databend: <a target="_blank" rel="noopener" href="https://github.com/datafuselabs/databend/releases/tag/v0.8.122-nightly">v0.8.122-nightly</a>，单节点<br>VM: 32 vCPU, 32 GiB (Cloud VM)<br>Object Store: S3<br>数据集: 100 亿记录，350G Raw Data，Xor Filter Index 700MB，索引和数据全部持久化到对象存储<br>表结构:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; desc t10b;</span><br><span class="line">+-------+-----------------+------+---------+-------+</span><br><span class="line">| Field | Type            | Null | Default | Extra |</span><br><span class="line">+-------+-----------------+------+---------+-------+</span><br><span class="line">| c1    | BIGINT UNSIGNED | NO   | 0       |       |</span><br><span class="line">| c2    | VARCHAR         | NO   |         |       |</span><br><span class="line">+-------+-----------------+------+---------+-------+</span><br></pre></td></tr></table></figure>
+
+<h3 id="部署-Databend"><a href="#部署-Databend" class="headerlink" title="部署 Databend"></a>部署 Databend</h3><p><strong>Step1：下载<a target="_blank" rel="noopener" href="https://databend.rs/download">安装包</a></strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/datafuselabs/databend/releases/download/v0.8.122-nightly/databend-v0.8.122-nightly-x86_64-unknown-linux-musl.tar.gz .</span><br><span class="line">tar zxvf databend-v0.8.122-nightly-x86_64-unknown-linux-musl.tar.gz</span><br></pre></td></tr></table></figure>
+
+<p>解压后目录结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">tree</span><br><span class="line">.</span><br><span class="line">├── bin</span><br><span class="line">│   ├── databend-meta</span><br><span class="line">│   ├── databend-metabench</span><br><span class="line">│   ├── databend-metactl</span><br><span class="line">│   └── databend-query</span><br><span class="line">├── configs</span><br><span class="line">│   ├── databend-meta.toml</span><br><span class="line">│   └── databend-query.toml</span><br><span class="line">├── readme.txt</span><br><span class="line">└── scripts</span><br><span class="line">    ├── start.sh</span><br><span class="line">    └── stop.sh</span><br></pre></td></tr></table></figure>
+
+<p><strong>Step2：启动 Databend Meta</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./bin/databend-meta -c configs/databend-meta.toml</span><br></pre></td></tr></table></figure>
+
+
+
+<p><strong>Step3：配置 Databend Query</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vim configs/databend-query.toml</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">... ...</span><br><span class="line"></span><br><span class="line">[meta]</span><br><span class="line"># To enable embedded meta-store, set address to &quot;&quot;.</span><br><span class="line">embedded_dir = &quot;./.databend/meta_embedded_1&quot;</span><br><span class="line">address = &quot;127.0.0.1:9191&quot;</span><br><span class="line">username = &quot;root&quot;</span><br><span class="line">password = &quot;root&quot;</span><br><span class="line">client_timeout_in_second = 60</span><br><span class="line">auto_sync_interval = 60</span><br><span class="line"></span><br><span class="line"># Storage config.</span><br><span class="line">[storage]</span><br><span class="line"># fs | s3 | azblob | obs</span><br><span class="line">type = &quot;s3&quot;</span><br><span class="line"></span><br><span class="line"># To use S3-compatible object storage, uncomment this block and set your values.</span><br><span class="line"> [storage.s3]</span><br><span class="line">bucket = &quot;&lt;your-bucket-name&gt;&quot;</span><br><span class="line">endpoint_url = &quot;&lt;your-s3-endpoint&gt;&quot;</span><br><span class="line">access_key_id = &quot;&lt;your-key&gt;&quot;</span><br><span class="line">secret_access_key = &quot;&lt;your-access-key&gt;&quot;</span><br><span class="line">enable_virtual_host_style = true</span><br></pre></td></tr></table></figure>
+
+<p>详细部署文档请参考： <a target="_blank" rel="noopener" href="https://databend.rs/doc/deploy/deploying-databend">https://databend.rs/doc/deploy/deploying-databend</a></p>
+<p><strong>Step4： 启动 Databend Query</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./bin/databend-query -c configs/databend-query.toml</span><br></pre></td></tr></table></figure>
+
+<p><strong>Step5： 构造测试数据集</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -uroot -h127.0.0.1 -P3307</span><br></pre></td></tr></table></figure>
+
+<p>构造 100 亿条测试数据(耗时 16 min 0.41 sec):</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">create table t10b as select number as c1, cast(rand() as string) as c2 from numbers(10000000000)</span><br></pre></td></tr></table></figure>
+
+<p>查询（无任何缓存，数据和索引全部在对象存储）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from t10b where  c2=&#x27;0.6622377673133426&#x27;;</span><br><span class="line">+-----------+--------------------+</span><br><span class="line">| c1        | c2                 |</span><br><span class="line">+-----------+--------------------+</span><br><span class="line">| 937500090 | 0.6622377673133426 |</span><br><span class="line">+-----------+--------------------+</span><br><span class="line">1 row in set (20.57 sec)</span><br><span class="line">Read 40000000 rows, 1009.75 MiB in 20.567 sec., 1.94 million rows/sec., 49.10 MiB/sec.</span><br></pre></td></tr></table></figure>
+
+<p>单节点 Databend 利用 filter 下推，然后使用 Xor Filter 索引做过滤，在 100 亿规模的随机数据上做点式查询，可以在 20s 左右。<br>也可以利用 Databend 的分布式能力来加速点查，Databend 的设计理念是一份数据计算弹性扩展，从单节点扩展到集群模式也非常简单：<a target="_blank" rel="noopener" href="https://databend.rs/doc/deploy/expanding-to-a-databend-cluster#deploying-a-new-query-node">Expanding a Standalone Databend</a>。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a>References</h2><p>[1] Arxiv: <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1912.08258">Xor Filters: Faster and Smaller Than Bloom and Cuckoo Filters</a><br>[2] Daniel Lemire’s blog: <a target="_blank" rel="noopener" href="https://lemire.me/blog/2019/12/19/xor-filters-faster-and-smaller-than-bloom-filters/">Xor Filters: Faster and Smaller Than Bloom Filters</a><br>[3] Databend, Cloud Lakehouse: <a target="_blank" rel="noopener" href="https://github.com/datafuselabs/databend">https://github.com/datafuselabs/databend</a></p>
+
+    </div>
+
+  </article>
+  <div class="toc-container">
+    
+  <div id="toc" class="toc-article">
+    <strong class="toc-title">目录</strong>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-text">背景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%89%E9%97%AE%E9%A2%98%E7%9A%84-Bloom-Filter"><span class="toc-text">有问题的 Bloom Filter</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%AB%98%E6%80%A7%E4%BB%B7%E6%AF%94%E7%9A%84-Xor-Filter"><span class="toc-text">高性价比的 Xor Filter</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83"><span class="toc-text">测试环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2-Databend"><span class="toc-text">部署 Databend</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#References"><span class="toc-text">References</span></a></li></ol>
+  </div>
+
+
+  </div>
+</div>
+<div class="copyright">
+    <span>本作品采用</span>
+    <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a>
+    <span>进行许可。 转载时请注明原文链接。</span>
+</div>
+<div class="share" style="width: 100%;">
+
+<div class="share" style="width: 100%;">
+</div>
+</div>
+
+  
+    <div class="post-nav">
+      <div class="post-nav-item post-nav-next">
+        
+          <span>〈 </span>
+          <a href="/2022/05/20/tokudb/" rel="next" title="虎哥与TokuDB的故事">
+          虎哥与TokuDB的故事
+          </a>
+        
+      </div>
+  
+      <div class="post-nav-item post-nav-prev">
+          
+      </div>
+    </div>
+  
+
+    </div>
+
+    
+
+  </div>
+  <footer class="footer text-center">
+    <div id="bottom-inner">
+        <a class="bottom-item" href="https://bohutang.me">首页</a> |
+        <a class="bottom-item" href="https://hexo.io" target="_blank">Powered by hexo</a> |
+        <a class="bottom-item" href="https://github.com/KevinOfNeu/hexo-theme-xoxo" target="_blank">Theme xoxo</a>
+    </div>
+</footer>
+
+  
+  <!-- scripts list from theme config.yml -->
+  
+    <script src="//cdn.bootcss.com/zepto/1.2.0/zepto.min.js"></script>
+  
+
+
+<script>
+  (function(window, document, undefined) {
+
+    var timer = null;
+
+    function returnTop() {
+      cancelAnimationFrame(timer);
+      timer = requestAnimationFrame(function fn() {
+        var oTop = document.body.scrollTop || document.documentElement.scrollTop;
+        if (oTop > 0) {
+          document.body.scrollTop = document.documentElement.scrollTop = oTop - 50;
+          timer = requestAnimationFrame(fn);
+        } else {
+          cancelAnimationFrame(timer);
+        }
+      });
+    }
+
+    var hearts = [];
+    window.requestAnimationFrame = (function() {
+      return window.requestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.oRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        function(callback) {
+          setTimeout(callback, 1000 / 60);
+        }
+    })();
+    init();
+
+    function init() {
+      css(".heart{z-index:9999;width: 10px;height: 10px;position: fixed;background: #f00;transform: rotate(45deg);-webkit-transform: rotate(45deg);-moz-transform: rotate(45deg);}.heart:after,.heart:before{content: '';width: inherit;height: inherit;background: inherit;border-radius: 50%;-webkit-border-radius: 50%;-moz-border-radius: 50%;position: absolute;}.heart:after{top: -5px;}.heart:before{left: -5px;}");
+      attachEvent();
+      gameloop();
+      addMenuEvent();
+    }
+
+    function gameloop() {
+      for (var i = 0; i < hearts.length; i++) {
+        if (hearts[i].alpha <= 0) {
+          document.body.removeChild(hearts[i].el);
+          hearts.splice(i, 1);
+          continue;
+        }
+        hearts[i].y--;
+        hearts[i].scale += 0.004;
+        hearts[i].alpha -= 0.013;
+        hearts[i].el.style.cssText = "left:" + hearts[i].x + "px;top:" + hearts[i].y + "px;opacity:" + hearts[i].alpha + ";transform:scale(" + hearts[i].scale + "," + hearts[i].scale + ") rotate(45deg);background:" + hearts[i].color;
+      }
+      requestAnimationFrame(gameloop);
+    }
+
+    /**
+     * 给logo设置点击事件
+     * 
+     * - 回到顶部
+     * - 出现爱心
+     */
+    function attachEvent() {
+      var old = typeof window.onclick === "function" && window.onclick;
+      var logo = document.getElementById("logo");
+      if (logo) {
+        logo.onclick = function(event) {
+          returnTop();
+          old && old();
+          createHeart(event);
+        }
+      }
+      
+    }
+
+    function createHeart(event) {
+      var d = document.createElement("div");
+      d.className = "heart";
+      hearts.push({
+        el: d,
+        x: event.clientX - 5,
+        y: event.clientY - 5,
+        scale: 1,
+        alpha: 1,
+        color: randomColor()
+      });
+      document.body.appendChild(d);
+    }
+
+    function css(css) {
+      var style = document.createElement("style");
+      style.type = "text/css";
+      try {
+        style.appendChild(document.createTextNode(css));
+      } catch (ex) {
+        style.styleSheet.cssText = css;
+      }
+      document.getElementsByTagName('head')[0].appendChild(style);
+    }
+
+    function randomColor() {
+      // return "rgb(" + (~~(Math.random() * 255)) + "," + (~~(Math.random() * 255)) + "," + (~~(Math.random() * 255)) + ")";
+      return "#F44336";
+    }
+
+    function addMenuEvent() {
+      var menu = document.getElementById('menu-main-post');
+      if (menu) {
+        var toc = document.getElementById('toc');
+        if (toc) {
+          menu.onclick = function() {
+            if (toc) {
+              if (toc.style.display == 'block') {
+                toc.style.display = 'none';
+              } else {
+                toc.style.display = 'block';
+              }
+            }
+          };
+        } else {
+          menu.style.display = 'none';
+        }
+      }
+    }
+
+  })(window, document);
+</script>
+
+  
+
+
+
+<!-- 100% privacy friendly analytics -->
+<script async defer src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+<noscript><img src="https://queue.simpleanalyticscdn.com/noscript.gif" alt="" referrerpolicy="no-referrer-when-downgrade" /></noscript>
+
+</body>
+</html>
