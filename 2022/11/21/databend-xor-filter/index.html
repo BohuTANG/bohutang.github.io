@@ -107,15 +107,11 @@
 <p>xp 是 Trie 领域的高手，工程实现来对他来说不是问题，但隐约感觉一些现有技术可以很好的解决这个问题。</p>
 <img src="https://databend-1253727613.cos.ap-singapore.myqcloud.com/blog/xor-filter/tidb-databend.png" align="center" style="zoom:60%;" />
 
-
-
 <h2 id="高性价比的-Xor-Filter"><a href="#高性价比的-Xor-Filter" class="headerlink" title="高性价比的 Xor Filter"></a>高性价比的 Xor Filter</h2><p>周日进行了一番探索，发现了 Daniel Lemire 团队在 2019 年提出的 Xor Filter 算法: <a target="_blank" rel="noopener" href="https://lemire.me/blog/2019/12/19/xor-filters-faster-and-smaller-than-bloom-filters/">Xor Filters: Faster and Smaller Than Bloom Filters</a>，从介绍看效果非常不错。</p>
 <img src="https://lemire.me/blog/wp-content/uploads/2019/12/comparison.png" style="zoom:45%;" />
 
 <p>抱着试试看的心理，基于 Rust 版（<a target="_blank" rel="noopener" href="https://github.com/prataprc/xorfilter">xorfilter</a>）做了一个测试 （<a target="_blank" rel="noopener" href="https://github.com/BohuTANG/databend/commit/b45793c044c17cc6f8706c42bbe21201590f359f">Xor Filter Bench</a>，发现疗效非常不错：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">u64: </span><br><span class="line">xor bitmap encode:1230069 bytes, raw:8000000 bytes, ratio:0.15375863</span><br><span class="line"></span><br><span class="line">bool:</span><br><span class="line">xor bitmap encode:61 bytes, raw:1000000 bytes, ratio:0.000061</span><br><span class="line"></span><br><span class="line">string:</span><br><span class="line">xor bitmap encode:123067 bytes, raw:3000000 bytes, ratio:0.041022334</span><br><span class="line"></span><br><span class="line">100000 records of the same key:</span><br><span class="line">xor bitmap encode: 61 bytes, raw:3000000 bytes, ratio:0.000020333333</span><br></pre></td></tr></table></figure>
-
-
 
 <p>于是，在 <a target="_blank" rel="noopener" href="https://github.com/datafuselabs/databend/pull/7860">databend#7860</a> 实现了 Bloom Filter 到 Xor Filter 的切换，让我们做一些测试来看看效果。</p>
 <h3 id="测试环境"><a href="#测试环境" class="headerlink" title="测试环境"></a>测试环境</h3><p>Databend: <a target="_blank" rel="noopener" href="https://github.com/datafuselabs/databend/releases/tag/v0.8.122-nightly">v0.8.122-nightly</a>，单节点<br>VM: 32 vCPU, 32 GiB (Cloud VM)<br>Object Store: S3<br>数据集: 100 亿记录，350G Raw Data，Xor Filter Index 700MB，索引和数据全部持久化到对象存储<br>表结构:</p>
@@ -129,8 +125,6 @@
 
 <p><strong>Step2：启动 Databend Meta</strong></p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./bin/databend-meta -c configs/databend-meta.toml</span><br></pre></td></tr></table></figure>
-
-
 
 <p><strong>Step3：配置 Databend Query</strong></p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vim configs/databend-query.toml</span><br></pre></td></tr></table></figure>
