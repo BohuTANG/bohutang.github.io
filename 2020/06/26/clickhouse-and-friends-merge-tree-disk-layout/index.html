@@ -8,6 +8,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#202020"/>
   <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <script>
+  !function(t){if(window.ko)return;window.ko=[],["identify","track","removeListeners","open","on","off","qualify","ready"].forEach(function(t){ko[t]=function(){var n=[].slice.call(arguments);return n.unshift(t),ko.push(n),ko}});var n=document.createElement("script");n.async=!0,n.setAttribute("src","https://cdn.getkoala.com/v1/pk_2ae4a6297bc7390b293cf472d10fd3d22664/sdk.js"),(document.body || document.head).appendChild(n)}();
+  </script>
   <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
   
   
@@ -28,7 +31,7 @@
       <link rel="stylesheet" href="/css/xoxo.css">
     
   
-<meta name="generator" content="Hexo 4.2.1"><link rel="alternate" href="/atom.xml" title="虎哥的博客" type="application/atom+xml">
+<meta name="generator" content="Hexo 6.2.0"><link rel="alternate" href="/atom.xml" title="虎哥的博客" type="application/atom+xml">
 </head>
 
 
@@ -114,18 +117,18 @@
 </li>
 </ol>
 <p>话不多说，上表：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE default.mt</span><br><span class="line">(</span><br><span class="line">    &#96;a&#96; Int32,</span><br><span class="line">    &#96;b&#96; Int32,</span><br><span class="line">    &#96;c&#96; Int32,</span><br><span class="line">    INDEX &#96;idx_c&#96; (c) TYPE minmax GRANULARITY 1</span><br><span class="line">)</span><br><span class="line">ENGINE &#x3D; MergeTree</span><br><span class="line">PARTITION BY a </span><br><span class="line">ORDER BY b</span><br><span class="line">SETTINGS index_granularity&#x3D;3</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE default.mt</span><br><span class="line">(</span><br><span class="line">    `a` Int32,</span><br><span class="line">    `b` Int32,</span><br><span class="line">    `c` Int32,</span><br><span class="line">    INDEX `idx_c` (c) TYPE minmax GRANULARITY 1</span><br><span class="line">)</span><br><span class="line">ENGINE = MergeTree</span><br><span class="line">PARTITION BY a </span><br><span class="line">ORDER BY b</span><br><span class="line">SETTINGS index_granularity=3</span><br></pre></td></tr></table></figure>
 
 <p>造点数据：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">insert into default.mt(a,b,c) values(1,1,1);</span><br><span class="line">insert into default.mt(a,b,c) values(5,2,2),(5,3,3);</span><br><span class="line">insert into default.mt(a,b,c) values(3,10,4),(3,9,5),(3,8,6),(3,7,7),(3,6,8),(3,5,9),(3,4,10);</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">insert into default.mt(a,b,c) values(1,1,1);</span><br><span class="line">insert into default.mt(a,b,c) values(5,2,2),(5,3,3);</span><br><span class="line">insert into default.mt(a,b,c) values(3,10,4),(3,9,5),(3,8,6),(3,7,7),(3,6,8),(3,5,9),(3,4,10);</span><br></pre></td></tr></table></figure>
 
 
 
-<h2 id="磁盘文件"><a href="#磁盘文件" class="headerlink" title="磁盘文件"></a><b>磁盘文件</b></h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ls ckdatas&#x2F;data&#x2F;default&#x2F;mt&#x2F;</span><br><span class="line">1_4_4_0  3_6_6_0  5_5_5_0  detached  format_version.txt</span><br></pre></td></tr></table></figure>
+<h2 id="磁盘文件"><a href="#磁盘文件" class="headerlink" title="磁盘文件"></a><b>磁盘文件</b></h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ls ckdatas/data/default/mt/</span><br><span class="line">1_4_4_0  3_6_6_0  5_5_5_0  detached  format_version.txt</span><br></pre></td></tr></table></figure>
 
-<p>可以看到，生成了 3 个数据目录，每个目录在 ClickHouse 里称作一个分区(part)，目录名的前缀正是我们写入时字段 a 的值: 1,3,5，因为表分区是这样定位的：<code>PARTITION BY a</code>。</p>
-<p>现在我们看看 a=3 分区：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ls ckdatas&#x2F;data&#x2F;default&#x2F;mt&#x2F;3_6_6_0&#x2F;</span><br><span class="line">a.bin  a.mrk2  b.bin  b.mrk2  c.bin  checksums.txt  c.mrk2  columns.txt  count.txt  minmax_a.idx  partition.dat  primary.idx  skp_idx_idx_c.idx  skp_idx_idx_c.mrk2</span><br></pre></td></tr></table></figure>
+<p>可以看到，生成了 3 个数据目录，每个目录在 ClickHouse 里称作一个分区(part)，目录名的前缀正是我们写入时字段 a 的值: 1,3,5，因为表分区是这样定位的：<code>PARTITION BY a </code>。</p>
+<p>现在我们看看 a&#x3D;3 分区：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ls ckdatas/data/default/mt/3_6_6_0/</span><br><span class="line">a.bin  a.mrk2  b.bin  b.mrk2  c.bin  checksums.txt  c.mrk2  columns.txt  count.txt  minmax_a.idx  partition.dat  primary.idx  skp_idx_idx_c.idx  skp_idx_idx_c.mrk2</span><br></pre></td></tr></table></figure>
 
 <ul>
 <li>*.bin 是列数据文件，按主键排序(ORDER BY)，这里是按照字段 b 进行排序</li>
@@ -134,7 +137,7 @@
 <li>primay.idx 主键索引文件，目的是加速主键 b 查找</li>
 <li>skp_idx_idx_c.* 字段 c 索引文件，目的是加速 c 的查找</li>
 </ul>
-<p>在磁盘上，MergeTree 只有一种物理排序，就是 ORDER BY 的主键序，其他文件(比如 .mrk/.idx)是一种逻辑加速，围绕仅有的一份物理排序，要解决的问题是：</p>
+<p>在磁盘上，MergeTree 只有一种物理排序，就是 ORDER BY 的主键序，其他文件(比如 .mrk&#x2F;.idx)是一种逻辑加速，围绕仅有的一份物理排序，要解决的问题是：</p>
 <p><b>在以字段 b 物理排序上，如何实现字段 a、字段 c 的快速查找？</b></p>
 <p>MergeTree 引擎概括起来很简单：<br>整个数据集通过分区字段被划分为多个物理分区，每个分区內又通过逻辑文件围绕仅有的一种物理排序进行加速查找。</p>
 <h2 id="存储结构"><a href="#存储结构" class="headerlink" title="存储结构"></a><b>存储结构</b></h2><h3 id="数据文件"><a href="#数据文件" class="headerlink" title="数据文件"></a><b>数据文件</b></h3><p>对于单个物理分区內的存储结构，首先要明确一点，MergeTree 的数据只有一份：*.bin。</p>
@@ -144,7 +147,7 @@
 
 <p>这样会有一个比较严重的问题：<br>如果 *.bin 文件较大，即使读取一行数据，也要加载整个 bin 文件，浪费了大量的 IO，没法忍。</p>
 <h3 id="granule"><a href="#granule" class="headerlink" title="granule"></a><b>granule</b></h3><p>高、黑科技来了，ClickHouse MergeTree 把 bin 文件根据颗粒度(GRANULARITY)划分为多个颗粒(granule)，每个 granule 单独压缩存储。</p>
-<p><code>SETTINGS index_granularity=3</code>  表示每 ３ 行数据为一个 granule，分区目前只有 ７ 条数据，所以被划分成 3 个 granule(三个色块)：</p>
+<p><code>SETTINGS index_granularity=3 </code>  表示每 ３ 行数据为一个 granule，分区目前只有 ７ 条数据，所以被划分成 3 个 granule(三个色块)：</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-bin-granule.png" align="center" style="zoom:50%;" />
 
 <p>为方便读取某个 granule，使用 *.mrk 文件记录每个 granule 的 offset，每个 granule 的 header 里会记录一些元信息，用于读取解析:</p>
@@ -162,11 +165,7 @@
 <li><p>只有一份全量数据，存储在 *.bin 文件</p>
 </li>
 <li><p>*.bin 按照 ORDER BY 字段降序存储</p>
-<img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-bin-orderby-sort.png" align="center" style="zoom:45%;" />
-
-
-
-</li>
+<img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-bin-orderby-sort.png" align="center" style="zoom:45%;" /></li>
 </ol>
 <h3 id="稀疏索引"><a href="#稀疏索引" class="headerlink" title="稀疏索引"></a><b>稀疏索引</b></h3><p>因为数据只有一份且只有一种物理排序，MergeTree在索引设计上选择了简单、高效的稀疏索引模式。</p>
 <p>什么是稀疏索引呢？就是从已经排序的全量数据里，间隔性的选取一些点，并记录这些点属于哪个 mark。</p>
@@ -176,38 +175,38 @@
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-primary-key.png" align="center" style="zoom:45%;" />
 
 <h4 id="2-skipping-index"><a href="#2-skipping-index" class="headerlink" title="2. skipping index"></a><b>2. skipping index</b></h4><p>普通索引。</p>
-<p><code>INDEX</code>idx_c<code>(c) TYPE minmax GRANULARITY 1</code> 针对字段 c 创建一个 minmax 模式索引。</p>
+<p><code>INDEX</code>idx_c<code> (c) TYPE minmax GRANULARITY 1</code> 针对字段 c 创建一个 minmax 模式索引。</p>
 <p><code>GRANULARITY</code> 是稀疏点选择上的 granule 颗粒度，<code>GRANULARITY 1</code> 表示每 1 个 granule 选取一个：</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-skipping-index-g1.png" align="center" style="zoom:40%;" />
 
 <p>如果定义为<code>GRANULARITY 2</code> ，则 2 个 granule 选取一个：</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-skipping-index-g2.png" align="center" style="zoom:40%;" />
 
-<h4 id="3-partition-minmax-index"><a href="#3-partition-minmax-index" class="headerlink" title="3. partition minmax index"></a><b>3. partition minmax index</b></h4><p>针对分区键，MergeTree 还会创建一个 min/max 索引，来加速分区选择。</p>
+<h4 id="3-partition-minmax-index"><a href="#3-partition-minmax-index" class="headerlink" title="3. partition minmax index"></a><b>3. partition minmax index</b></h4><p>针对分区键，MergeTree 还会创建一个 min&#x2F;max 索引，来加速分区选择。</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-minmax-idx.png" align="center" style="zoom:40%;" />
 
 <h4 id="4-全景图"><a href="#4-全景图" class="headerlink" title="4. 全景图 "></a><b>4. 全景图 </b></h4><img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/posts/merge-tree-layout.png" align="center" style="zoom:95%;" />
 
 <h2 id="查询优化"><a href="#查询优化" class="headerlink" title="查询优化"></a><b>查询优化</b></h2><p>现在熟悉了 MergeTree 的存储结构，我们通过几个查询来体验下。</p>
 <h3 id="1-分区键查询"><a href="#1-分区键查询" class="headerlink" title="1. 分区键查询"></a><b>1. 分区键查询</b></h3><p>语句：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from default.mt where a&#x3D;3</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from default.mt where a=3</span><br></pre></td></tr></table></figure>
 
 <p>查询会直接根据 <code>a=3</code> 定位到单个分区:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&lt;Debug&gt; InterpreterSelectQuery: MergeTreeWhereOptimizer: condition &quot;a &#x3D; 3&quot; moved to PREWHERE</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Key condition: unknown</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): MinMax index condition: (column 0 in [3, 3])</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Selected 1 parts by a, 1 parts by key, 3 marks by primary key, 3 marks to read from 1 ranges</span><br><span class="line">┌─a─┬──b─┬──c─┐</span><br><span class="line">│ 3 │  4 │ 10 │</span><br><span class="line">│ 3 │  5 │  9 │</span><br><span class="line">│ 3 │  6 │  8 │</span><br><span class="line">│ 3 │  7 │  7 │</span><br><span class="line">│ 3 │  8 │  6 │</span><br><span class="line">│ 3 │  9 │  5 │</span><br><span class="line">│ 3 │ 10 │  4 │</span><br><span class="line">└───┴────┴────┘</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&lt;Debug&gt; InterpreterSelectQuery: MergeTreeWhereOptimizer: condition &quot;a = 3&quot; moved to PREWHERE</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Key condition: unknown</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): MinMax index condition: (column 0 in [3, 3])</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Selected 1 parts by a, 1 parts by key, 3 marks by primary key, 3 marks to read from 1 ranges</span><br><span class="line">┌─a─┬──b─┬──c─┐</span><br><span class="line">│ 3 │  4 │ 10 │</span><br><span class="line">│ 3 │  5 │  9 │</span><br><span class="line">│ 3 │  6 │  8 │</span><br><span class="line">│ 3 │  7 │  7 │</span><br><span class="line">│ 3 │  8 │  6 │</span><br><span class="line">│ 3 │  9 │  5 │</span><br><span class="line">│ 3 │ 10 │  4 │</span><br><span class="line">└───┴────┴────┘</span><br></pre></td></tr></table></figure>
 
 <h3 id="2-主键索引查询"><a href="#2-主键索引查询" class="headerlink" title="2. 主键索引查询"></a><b>2. 主键索引查询</b></h3><p>语句：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from default.mt where b&#x3D;5</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from default.mt where b=5</span><br></pre></td></tr></table></figure>
 
 <p>查询会先从 3 个分区读取 prmary.idx，然后定位到只有一个分区符合条件，找到要读取的 mark:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Key condition: (column 0 in [5, 5])</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): MinMax index condition: unknown</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Selected 3 parts by a, 1 parts by key, 1 marks by primary key, 1 marks to read from 1 ranges</span><br><span class="line">┌─a─┬─b─┬─c─┐</span><br><span class="line">│ 3 │ 5 │ 9 │</span><br><span class="line">└───┴───┴───┘</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Key condition: (column 0 in [5, 5])</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): MinMax index condition: unknown</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Selected 3 parts by a, 1 parts by key, 1 marks by primary key, 1 marks to read from 1 ranges</span><br><span class="line">┌─a─┬─b─┬─c─┐</span><br><span class="line">│ 3 │ 5 │ 9 │</span><br><span class="line">└───┴───┴───┘</span><br></pre></td></tr></table></figure>
 
 
 
 <h3 id="3-索引查询"><a href="#3-索引查询" class="headerlink" title="3. 索引查询"></a><b>3. 索引查询</b></h3><p>语句：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from default.mt where c&#x3D;5</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from default.mt where c=5</span><br></pre></td></tr></table></figure>
 
 <p>查询会先从 3 个分区读取 prmary.idx 和 skp_idx_idx_c.idx 进行 granule 过滤（没用的 drop 掉），然后定位到只有 3_x_x_x 分区的一个 granule 符合条件:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&lt;Debug&gt; InterpreterSelectQuery: MergeTreeWhereOptimizer: condition &quot;b &#x3D; 5&quot; moved to PREWHERE</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Key condition: unknown</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): MinMax index condition: unknown</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Index &#96;idx_c&#96; has dropped 1 &#x2F; 1 granules.</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Index &#96;idx_c&#96; has dropped 1 &#x2F; 1 granules.</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Index &#96;idx_c&#96; has dropped 2 &#x2F; 3 granules.</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Selected 3 parts by a, 1 parts by key, 5 marks by primary key, 1 marks to read from 1 ranges</span><br><span class="line">┌─a─┬─b─┬─c─┐</span><br><span class="line">│ 3 │ 9 │ 5 │</span><br><span class="line">└───┴───┴───┘</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&lt;Debug&gt; InterpreterSelectQuery: MergeTreeWhereOptimizer: condition &quot;b = 5&quot; moved to PREWHERE</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Key condition: unknown</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): MinMax index condition: unknown</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Index `idx_c` has dropped 1 / 1 granules.</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Index `idx_c` has dropped 1 / 1 granules.</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Index `idx_c` has dropped 2 / 3 granules.</span><br><span class="line">&lt;Debug&gt; default.mt (SelectExecutor): Selected 3 parts by a, 1 parts by key, 5 marks by primary key, 1 marks to read from 1 ranges</span><br><span class="line">┌─a─┬─b─┬─c─┐</span><br><span class="line">│ 3 │ 9 │ 5 │</span><br><span class="line">└───┴───┴───┘</span><br></pre></td></tr></table></figure>
 
 
 
@@ -226,7 +225,7 @@
     
   <div id="toc" class="toc-article">
     <strong class="toc-title">目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#磁盘文件"><span class="toc-text">磁盘文件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#存储结构"><span class="toc-text">存储结构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#数据文件"><span class="toc-text">数据文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#granule"><span class="toc-text">granule</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#存储排序"><span class="toc-text">存储排序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#稀疏索引"><span class="toc-text">稀疏索引</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-primary-index"><span class="toc-text">1. primary index</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-skipping-index"><span class="toc-text">2. skipping index</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-partition-minmax-index"><span class="toc-text">3. partition minmax index</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-全景图"><span class="toc-text">4. 全景图 </span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#查询优化"><span class="toc-text">查询优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-分区键查询"><span class="toc-text">1. 分区键查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-主键索引查询"><span class="toc-text">2. 主键索引查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-索引查询"><span class="toc-text">3. 索引查询</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A3%81%E7%9B%98%E6%96%87%E4%BB%B6"><span class="toc-text">磁盘文件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84"><span class="toc-text">存储结构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%96%87%E4%BB%B6"><span class="toc-text">数据文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#granule"><span class="toc-text">granule</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AD%98%E5%82%A8%E6%8E%92%E5%BA%8F"><span class="toc-text">存储排序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A8%80%E7%96%8F%E7%B4%A2%E5%BC%95"><span class="toc-text">稀疏索引</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-primary-index"><span class="toc-text">1. primary index</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-skipping-index"><span class="toc-text">2. skipping index</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-partition-minmax-index"><span class="toc-text">3. partition minmax index</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-%E5%85%A8%E6%99%AF%E5%9B%BE"><span class="toc-text">4. 全景图 </span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96"><span class="toc-text">查询优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%88%86%E5%8C%BA%E9%94%AE%E6%9F%A5%E8%AF%A2"><span class="toc-text">1. 分区键查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E4%B8%BB%E9%94%AE%E7%B4%A2%E5%BC%95%E6%9F%A5%E8%AF%A2"><span class="toc-text">2. 主键索引查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E7%B4%A2%E5%BC%95%E6%9F%A5%E8%AF%A2"><span class="toc-text">3. 索引查询</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-text">总结</span></a></li></ol>
   </div>
 
 
@@ -234,7 +233,7 @@
 </div>
 <div class="copyright">
     <span>本作品采用</span>
-    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">知识共享署名 4.0 国际许可协议</a>
+    <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a>
     <span>进行许可。 转载时请注明原文链接。</span>
 </div>
 <div class="share" style="width: 100%;">

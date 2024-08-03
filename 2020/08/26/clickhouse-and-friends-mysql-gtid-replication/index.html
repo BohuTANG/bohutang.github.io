@@ -8,6 +8,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#202020"/>
   <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <script>
+  !function(t){if(window.ko)return;window.ko=[],["identify","track","removeListeners","open","on","off","qualify","ready"].forEach(function(t){ko[t]=function(){var n=[].slice.call(arguments);return n.unshift(t),ko.push(n),ko}});var n=document.createElement("script");n.async=!0,n.setAttribute("src","https://cdn.getkoala.com/v1/pk_2ae4a6297bc7390b293cf472d10fd3d22664/sdk.js"),(document.body || document.head).appendChild(n)}();
+  </script>
   <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
   
   
@@ -28,7 +31,7 @@
       <link rel="stylesheet" href="/css/xoxo.css">
     
   
-<meta name="generator" content="Hexo 4.2.1"><link rel="alternate" href="/atom.xml" title="虎哥的博客" type="application/atom+xml">
+<meta name="generator" content="Hexo 6.2.0"><link rel="alternate" href="/atom.xml" title="虎哥的博客" type="application/atom+xml">
 </head>
 
 
@@ -99,31 +102,31 @@
 
 <p><b>最后更新: 2020-09-03</b></p>
 <p> <a href="/2020/07/26/clickhouse-and-friends-mysql-replication/">MySQL实时复制原理篇</a></p>
-<p>几天前 ClickHouse 官方发布了 <a href="https://github.com/ClickHouse/ClickHouse/releases/tag/v20.8.1.4447-testing" target="_blank" rel="noopener">v20.8.1.4447-testing</a>，这个版本已经包含了 MaterializeMySQL 引擎，实现了 ClickHouse 实时复制 MySQL 数据的能力，感兴趣的朋友可以通过官方安装包来做体验，安装方式参考: <a href="https://clickhouse.tech/#quick-start" target="_blank" rel="noopener">https://clickhouse.tech/#quick-start</a>，需要注意的是要选择 testing 分支。</p>
+<p>几天前 ClickHouse 官方发布了 <a target="_blank" rel="noopener" href="https://github.com/ClickHouse/ClickHouse/releases/tag/v20.8.1.4447-testing">v20.8.1.4447-testing</a>，这个版本已经包含了 MaterializeMySQL 引擎，实现了 ClickHouse 实时复制 MySQL 数据的能力，感兴趣的朋友可以通过官方安装包来做体验，安装方式参考: <a target="_blank" rel="noopener" href="https://clickhouse.tech/#quick-start">https://clickhouse.tech/#quick-start</a>，需要注意的是要选择 testing 分支。</p>
 <h2 id="基于位点同步"><a href="#基于位点同步" class="headerlink" title="基于位点同步"></a><b>基于位点同步</b></h2><p>MaterializeMySQL 在 v20.8.1.4447-testing 版本是基于 binlog 位点模式进行同步的。</p>
 <p>每次消费完一批 binlog event，就会记录 event 的位点信息到 .metadata 文件:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Version:	1</span><br><span class="line">Binlog File:	mysql-bin.000002</span><br><span class="line">Binlog Position:	328</span><br><span class="line">Data Version:	1</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Version:	1</span><br><span class="line">Binlog File:	mysql-bin.000002</span><br><span class="line">Binlog Position:	328</span><br><span class="line">Data Version:	1</span><br></pre></td></tr></table></figure>
 
 <p>这样当 ClickHouse 再次启动时，它会把 {‘mysql-bin.000002’, 328} 二元组通过协议告知 MySQL Server，MySQL 从这个位点开始发送数据：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">s1&gt; ClickHouse 发送 &#123;&#39;mysql-bin.000002&#39;, 328&#125; 位点信息给 MySQL</span><br><span class="line">s2&gt; MySQL 找到本地 mysql-bin.000002 文件并定位到 328 偏移位置，读取下一个 event 发送给 ClickHouse</span><br><span class="line">s3&gt; ClickHouse 接收 binlog event 并更新 .metadata位点</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">s1&gt; ClickHouse 发送 &#123;&#x27;mysql-bin.000002&#x27;, 328&#125; 位点信息给 MySQL</span><br><span class="line">s2&gt; MySQL 找到本地 mysql-bin.000002 文件并定位到 328 偏移位置，读取下一个 event 发送给 ClickHouse</span><br><span class="line">s3&gt; ClickHouse 接收 binlog event 并更新 .metadata位点</span><br></pre></td></tr></table></figure>
 
 <p>看起来不错哦，但是有个问题：<br>如果 MySQL Server 是一个集群(比如１主２从)，通过 VIP 对外服务，MaterializeMySQL 的 host 指向的是这个 vip。<br>当集群主从发生切换后，{binlog-name, binlog-position} 二元组其实是不准确的，因为集群里主从 binlog 不一定是完全一致的(binlog 可以做 reset 操作)。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">s1&gt; ClickHouse 发送 &#123;&#39;mysql-bin.000002&#39;, 328&#125; 给集群新主 MySQL</span><br><span class="line">s2&gt; 新主 MySQL 发现本地没有 mysql-bin.000002 文件，因为它做过 reset master 操作，binlog 文件是 mysql-bin.000001</span><br><span class="line">... oops ...</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">s1&gt; ClickHouse 发送 &#123;&#x27;mysql-bin.000002&#x27;, 328&#125; 给集群新主 MySQL</span><br><span class="line">s2&gt; 新主 MySQL 发现本地没有 mysql-bin.000002 文件，因为它做过 reset master 操作，binlog 文件是 mysql-bin.000001</span><br><span class="line">... oops ...</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
-<p>为了解决这个问题，我们开发了 GTID 同步模式，废弃了不安全的位点同步模式，目前已被 upstream merged <a href="https://github.com/ClickHouse/ClickHouse/pull/13820" target="_blank" rel="noopener">#PR13820</a>，下一个 testing 版本即可体验。</p>
-<p>着急的话可以自己编译或通过 <a href="https://clickhouse-builds.s3.yandex.net/0/2b8ad576cc3892d2d760f3f8b670adf17db0c2a0/clickhouse_build_check/report.html" target="_blank" rel="noopener">ClickHouse Build Check for master-20.9.1</a> 下载安装。</p>
+<p>为了解决这个问题，我们开发了 GTID 同步模式，废弃了不安全的位点同步模式，目前已被 upstream merged <a target="_blank" rel="noopener" href="https://github.com/ClickHouse/ClickHouse/pull/13820">#PR13820</a>，下一个 testing 版本即可体验。</p>
+<p>着急的话可以自己编译或通过 <a target="_blank" rel="noopener" href="https://clickhouse-builds.s3.yandex.net/0/2b8ad576cc3892d2d760f3f8b670adf17db0c2a0/clickhouse_build_check/report.html">ClickHouse Build Check for master-20.9.1</a> 下载安装。</p>
 <h2 id="基于GTID同步"><a href="#基于GTID同步" class="headerlink" title="基于GTID同步"></a><b>基于GTID同步</b></h2><p>GTID 是 MySQL 复制增强版，从 MySQL 5.6 版本开始支持，目前已经是 MySQL 主流复制模式。</p>
 <p>它为每个 event 分配一个全局唯一ID和序号，我们可以不用关心 MySQL 集群主从拓扑结构，直接告知 MySQL 这个 GTID 即可，.metadata变为:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Version:	2</span><br><span class="line">Executed GTID:	f4aee41e-e36f-11ea-8b37-0242ac110002:1-5</span><br><span class="line">Data Version:	1</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Version:	2</span><br><span class="line">Executed GTID:	f4aee41e-e36f-11ea-8b37-0242ac110002:1-5</span><br><span class="line">Data Version:	1</span><br></pre></td></tr></table></figure>
 
 <p><code>f4aee41e-e36f-11ea-8b37-0242ac110002</code> 是生成 event的主机UUID，<code>1-5</code>是已经同步的event区间。</p>
 <p>这样流程就变为:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">s1&gt; ClickHouse 发送 GTID:f4aee41e-e36f-11ea-8b37-0242ac110002:1-5 给 MySQL</span><br><span class="line">s2&gt; MySQL 根据 GTID:f4aee41e-e36f-11ea-8b37-0242ac110002:1-5 找到本地位点，读取下一个 event 发送给 ClickHouse</span><br><span class="line">s3&gt; ClickHouse 接收 binlog event 并更新 .metadata GTID信息</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">s1&gt; ClickHouse 发送 GTID:f4aee41e-e36f-11ea-8b37-0242ac110002:1-5 给 MySQL</span><br><span class="line">s2&gt; MySQL 根据 GTID:f4aee41e-e36f-11ea-8b37-0242ac110002:1-5 找到本地位点，读取下一个 event 发送给 ClickHouse</span><br><span class="line">s3&gt; ClickHouse 接收 binlog event 并更新 .metadata GTID信息</span><br></pre></td></tr></table></figure>
 
-<h2 id="MySQL开启GTID"><a href="#MySQL开启GTID" class="headerlink" title=" MySQL开启GTID"></a><b> MySQL开启GTID</b></h2><p>那么，MySQL 侧怎么开启 GTID 呢？增加以下两个参数即可:</p>
+<h2 id="MySQL开启GTID"><a href="#MySQL开启GTID" class="headerlink" title=" MySQL开启GTID"></a><b> MySQL开启GTID</b></h2><p>那么，MySQL 侧怎么开启 GTID 呢？增加以下两个参数即可:</p>
 <p><code>--gtid-mode=ON --enforce-gtid-consistency</code></p>
 <p>比如启动一个启用 GTID 的 MySQL docker：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -e MYSQL_ROOT_PASSWORD&#x3D;123 mysql:5.7 mysqld --datadir&#x3D;&#x2F;var&#x2F;lib&#x2F;mysql --server-id&#x3D;1 --log-bin&#x3D;&#x2F;var&#x2F;lib&#x2F;mysql&#x2F;mysql-bin.log --gtid-mode&#x3D;ON --enforce-gtid-consistency</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -e MYSQL_ROOT_PASSWORD=123 mysql:5.7 mysqld --datadir=/var/lib/mysql --server-id=1 --log-bin=/var/lib/mysql/mysql-bin.log --gtid-mode=ON --enforce-gtid-consistency</span><br></pre></td></tr></table></figure>
 
 
 
@@ -148,7 +151,7 @@
     
   <div id="toc" class="toc-article">
     <strong class="toc-title">目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#基于位点同步"><span class="toc-text">基于位点同步</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#基于GTID同步"><span class="toc-text">基于GTID同步</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL开启GTID"><span class="toc-text"> MySQL开启GTID</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#注意事项"><span class="toc-text">注意事项</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E4%BD%8D%E7%82%B9%E5%90%8C%E6%AD%A5"><span class="toc-text">基于位点同步</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8EGTID%E5%90%8C%E6%AD%A5"><span class="toc-text">基于GTID同步</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL%E5%BC%80%E5%90%AFGTID"><span class="toc-text"> MySQL开启GTID</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-text">注意事项</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-text">总结</span></a></li></ol>
   </div>
 
 
@@ -156,7 +159,7 @@
 </div>
 <div class="copyright">
     <span>本作品采用</span>
-    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">知识共享署名 4.0 国际许可协议</a>
+    <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a>
     <span>进行许可。 转载时请注明原文链接。</span>
 </div>
 <div class="share" style="width: 100%;">

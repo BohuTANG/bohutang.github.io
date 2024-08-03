@@ -8,10 +8,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#202020"/>
   <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <script>
+  !function(t){if(window.ko)return;window.ko=[],["identify","track","removeListeners","open","on","off","qualify","ready"].forEach(function(t){ko[t]=function(){var n=[].slice.call(arguments);return n.unshift(t),ko.push(n),ko}});var n=document.createElement("script");n.async=!0,n.setAttribute("src","https://cdn.getkoala.com/v1/pk_2ae4a6297bc7390b293cf472d10fd3d22664/sdk.js"),(document.body || document.head).appendChild(n)}();
+  </script>
   <script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js" async></script>
   
   
-    <meta name="keywords" content="snowflake,firebolt,databend,Cloud Warehouse," />
+    <meta name="keywords" content="databend,Cloud Warehouse,snowflake,firebolt," />
   
 
   
@@ -28,7 +31,7 @@
       <link rel="stylesheet" href="/css/xoxo.css">
     
   
-<meta name="generator" content="Hexo 4.2.1"><link rel="alternate" href="/atom.xml" title="虎哥的博客" type="application/atom+xml">
+<meta name="generator" content="Hexo 6.2.0"><link rel="alternate" href="/atom.xml" title="虎哥的博客" type="application/atom+xml">
 </head>
 
 
@@ -119,7 +122,7 @@
 
 
 
-<p>首先它是一个存储和计算分离的架构，其次是计算节点尽量无状态，这样我们可以根据需要添加/删除计算节点，算力随时增加和减少，是一个很平滑的过程，不涉及数据的迁移。<br>node-4 基本是 severless 的，可认为是一个进程，运行完毕自动消亡，在调度上可以做到更加精细化。</p>
+<p>首先它是一个存储和计算分离的架构，其次是计算节点尽量无状态，这样我们可以根据需要添加&#x2F;删除计算节点，算力随时增加和减少，是一个很平滑的过程，不涉及数据的迁移。<br>node-4 基本是 severless 的，可认为是一个进程，运行完毕自动消亡，在调度上可以做到更加精细化。</p>
 <img src="https://bohutang-1253727613.cos.ap-beijing.myqcloud.com/blog-datafuse/cloud-warehouse-v1-scale.png" align="center" style="zoom:35%;" />
 
 
@@ -149,13 +152,13 @@
 
 
 
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p><a href="https://github.com/datafuselabs/databend" target="_blank" rel="noopener">Databend</a> 是一个开源的 Cloud Warehouse，重在计算和状态分离，专注云上的弹性扩展，让大家轻松打造出自己的 Data Cloud。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a><b>总结</b></h2><p><a target="_blank" rel="noopener" href="https://github.com/datafuselabs/databend">Databend</a> 是一个开源的 Cloud Warehouse，重在计算和状态分离，专注云上的弹性扩展，让大家轻松打造出自己的 Data Cloud。</p>
 <p>很高兴，又开了新系列来讲 Databend，一个把 Rust 和 Cloud 进行连接的 Warehouse 项目，充满乐趣和挑战。</p>
 <h2 id="References"><a href="#References" class="headerlink" title="References"></a><b>References</b></h2><ol>
-<li><a href="https://github.com/datafuselabs/databend" target="_blank" rel="noopener">Databend: A Modern Real-Time Data Processing &amp; Analytics DBMS with Cloud-Native Architecture</a></li>
-<li><a href="https://www.usenix.org/system/files/nsdi20-paper-vuppalapati.pdf" target="_blank" rel="noopener">Building An Elastic Query Engine on Disaggregated</a></li>
-<li><a href="http://www.vertica.com/wp-content/uploads/2018/05/Vertica_EON_SIGMOD_Paper.pdf" target="_blank" rel="noopener">Eon Mode: Bringing the Vertica Columnar Database to the Cloud</a></li>
-<li><a href="https://www.firebolt.io/resources/firebolt-cloud-data-warehouse-whitepaper" target="_blank" rel="noopener">The Firebolt Cloud Data Warehouse Whitepaper</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/datafuselabs/databend">Databend: A Modern Real-Time Data Processing &amp; Analytics DBMS with Cloud-Native Architecture</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.usenix.org/system/files/nsdi20-paper-vuppalapati.pdf">Building An Elastic Query Engine on Disaggregated</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.vertica.com/wp-content/uploads/2018/05/Vertica_EON_SIGMOD_Paper.pdf">Eon Mode: Bringing the Vertica Columnar Database to the Cloud</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.firebolt.io/resources/firebolt-cloud-data-warehouse-whitepaper">The Firebolt Cloud Data Warehouse Whitepaper</a></li>
 </ol>
 
     </div>
@@ -165,7 +168,7 @@
     
   <div id="toc" class="toc-article">
     <strong class="toc-title">目录</strong>
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Sharding-Warehouse"><span class="toc-text">Sharding Warehouse</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Cloud-Warehouse"><span class="toc-text">Cloud Warehouse</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#如何设计？"><span class="toc-text">如何设计？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Snowflake-架构"><span class="toc-text">Snowflake 架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Datafuse-架构"><span class="toc-text">Datafuse 架构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#References"><span class="toc-text">References</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Sharding-Warehouse"><span class="toc-text">Sharding Warehouse</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Cloud-Warehouse"><span class="toc-text">Cloud Warehouse</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E8%AE%BE%E8%AE%A1%EF%BC%9F"><span class="toc-text">如何设计？</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Snowflake-%E6%9E%B6%E6%9E%84"><span class="toc-text">Snowflake 架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Datafuse-%E6%9E%B6%E6%9E%84"><span class="toc-text">Datafuse 架构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-text">总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#References"><span class="toc-text">References</span></a></li></ol>
   </div>
 
 
@@ -173,7 +176,7 @@
 </div>
 <div class="copyright">
     <span>本作品采用</span>
-    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">知识共享署名 4.0 国际许可协议</a>
+    <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a>
     <span>进行许可。 转载时请注明原文链接。</span>
 </div>
 <div class="share" style="width: 100%;">
